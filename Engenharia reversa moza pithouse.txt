@@ -178,7 +178,7 @@ def find_target():
         "RacingLab.exe",
         "MOZA Dashboard Studio.exe",
     ]
-    procs = frida.enumerate_processes()
+    procs = frida.get_local_device().enumerate_processes()
     matches = [p for p in procs if p.name in targets_names]
     if not matches:
         print("[!] Nenhum processo Moza esta rodando.")
