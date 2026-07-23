@@ -1,88 +1,277 @@
-Executando orchestrador em subprocessos isolados]
-Testando 60 combinacoes em subprocessos isolados...
+# =============================================================================
+# ENGENHARIA REVERSA MOZA — HOOK FRIDA PARA CAPTURAR CHAVE TEA EM RUNTIME
+# =============================================================================
+#
+# CONTEXTO:
+#   Testes anteriores confirmaram que a cifra e TEA/XTEA com 16 rounds em
+#   crypt.dll. Mas nenhuma string ASCII testada (Gudsen.88888888, MOZA, etc.)
+#   produziu a chave correta.
+#
+#   Conclusao: "Gudsen.88888888" e provavelmente string de LOG.
+#   A chave real deve ser um blob binario passado em runtime.
+#
+# ESTRATEGIA:
+#   Usar Frida para injetar hook nas funcoes Tea_Init/Tea_Encrypt/Tea_Decrypt
+#   do crypt.dll enquanto o Pit House roda. Isso captura os ARGUMENTOS reais
+#   passados pela aplicacao (a chave verdadeira).
+#
+# COMO USAR:
+#   1. Abrir o Pit House e deixar rodando com o volante conectado
+#   2. Rodar este script (vai listar os processos Moza detectados)
+#   3. Escolher o processo (geralmente "MOZA Pit House.exe" ou "FirmwareManager.exe")
+#   4. Com o hook ativo, VOLTAR no Pit House e disparar uma acao que envolva
+#      firmware — exemplos:
+#      - Abrir a tela de firmware update
+#      - Clicar em "verificar atualizacao"
+#      - Trocar de aba de dispositivo
+#      - Fazer a troca de UI (o script enviar-dashuiindex faz isso)
+#   5. Voltar no PowerShell — os args de Tea_Init vao aparecer no console
+#   6. Copiar os bytes hex da chave real e me mandar
+# =============================================================================
 
-  [cdecl_decrypt            ] key=b'Gudsen.88888888'                            drop= 0.018 diff=2215 head=0856cede9ba478d53adc99322e6639e1
-  [cdecl_decrypt            ] key=b'Gudsen.88888888\x00'                        drop= 0.018 diff=2215 head=0856cede9ba478d53adc99322e6639e1
-  [cdecl_decrypt            ] key=b'gudsen.88888888'                            drop= 0.014 diff=2223 head=f733fa0508091f4ce2a68b7c07500e68
-  [cdecl_decrypt            ] key=b'GUDSEN.88888888'                            drop= 0.014 diff=2225 head=d2522f67d01444b103e3f1e509b81b8f
-  [cdecl_decrypt            ] key=b'Gudsen.888888888'                           drop= 0.020 diff=2216 head=be98440102b248465a72abcf7d29a6b5
-  [cdecl_decrypt            ] key=b'MOZA'                                       drop= 0.012 diff=2220 head=4fdbb4c24914377e13a09fde2ff97ca2
-  [cdecl_decrypt            ] key=b'moza'                                       drop= 0.023 diff=2221 head=cc3a391ec4167c48614e745adb378aed
-  [cdecl_decrypt            ] key=b'[RS21-D03-HW_FW-CU-V03][FSR][1][5]'         drop= 0.007 diff=2223 head=9eaba83a358a1f7b6918342c49a463ab
-  [cdecl_decrypt            ] key=b'D03'                                        drop= 0.020 diff=2222 head=d79bb79e38200c8e11731d56ec8abfd7
-  [cdecl_decrypt            ] key=b'FSR'                                        drop= 0.022 diff=2227 head=52de426cfdfae7016d79ca5128b4b9b1
-  [cdecl_decrypt            ] key=b'Gudsen.88888888\n'                          drop= 0.016 diff=2220 head=6ec2ad8ae54ffbcdab6fd7b8b2484ef1
-  [cdecl_decrypt            ] key=b'Gudsen.88888888\r\n'                        drop= 0.020 diff=2220 head=6275be85cbdebfac2002c7a3687be484
-  [cdecl_decrypt            ] key=b'Gudsen'                                     drop= 0.021 diff=2225 head=871fe216e92df6bb99fd270f3a4bb5b2
-  [cdecl_decrypt            ] key=b'88888888'                                   drop= 0.024 diff=2213 head=2ead1a67868db71583525679459f6087
-  [cdecl_decrypt            ] key=b'password'                                   drop= 0.030 diff=2222 head=b1cf80812ff6f6156abb5c0258f593db
-  [cdecl_encrypt            ] key=b'Gudsen.88888888'                            drop= 0.017 diff=2228 head=808fa4b7e38bfd6857c37688af9b7099
-  [cdecl_encrypt            ] key=b'Gudsen.88888888\x00'                        drop= 0.017 diff=2228 head=808fa4b7e38bfd6857c37688af9b7099
-  [cdecl_encrypt            ] key=b'gudsen.88888888'                            drop= 0.023 diff=2224 head=f4aac5948dcd86513648385ef9c638f6
-  [cdecl_encrypt            ] key=b'GUDSEN.88888888'                            drop= 0.019 diff=2220 head=71f10a8a670f2d9daeac25d911d513c0
-  [cdecl_encrypt            ] key=b'Gudsen.888888888'                           drop= 0.010 diff=2220 head=1214e4890dd698ec6acedf4cca553209
-  [cdecl_encrypt            ] key=b'MOZA'                                       drop= 0.008 diff=2218 head=3ce1848619e75914f1a129fdd1934366
-  [cdecl_encrypt            ] key=b'moza'                                       drop= 0.011 diff=2226 head=91bba61e983735153e2cd6bab241b9b3
-  [cdecl_encrypt            ] key=b'[RS21-D03-HW_FW-CU-V03][FSR][1][5]'         drop= 0.024 diff=2220 head=e7f56e6cfe984db1253daa4837b12383
-  [cdecl_encrypt            ] key=b'D03'                                        drop= 0.016 diff=2223 head=b83ce345e7aaf26cb82111fe3b3c8313
-  [cdecl_encrypt            ] key=b'FSR'                                        drop= 0.014 diff=2223 head=9c5646f3e5e96cbfaee760ce5649c893
-  [cdecl_encrypt            ] key=b'Gudsen.88888888\n'                          drop= 0.018 diff=2216 head=558e5c81d887e570cc5e7fb352eb0073
-  [cdecl_encrypt            ] key=b'Gudsen.88888888\r\n'                        drop= 0.014 diff=2224 head=e2a3a7332566b57ad1a37afb417938ac
-  [cdecl_encrypt            ] key=b'Gudsen'                                     drop= 0.020 diff=2222 head=af41487f47ecb28a4215c97b176355f7
-  [cdecl_encrypt            ] key=b'88888888'                                   drop= 0.027 diff=2224 head=6d5fc66fc66acefd1cb2425bb1bec30d
-  [cdecl_encrypt            ] key=b'password'                                   drop= 0.009 diff=2223 head=38e9b04f0981230279bf76fc1d87c298
-  [cdecl_no_init_decrypt    ] key=b'Gudsen.88888888'                            drop= 0.016 diff=2222 head=ec2ca207b3cae5edc478e1aa62411259
-  [cdecl_no_init_decrypt    ] key=b'Gudsen.88888888\x00'                        drop= 0.016 diff=2222 head=ec2ca207b3cae5edc478e1aa62411259
-  [cdecl_no_init_decrypt    ] key=b'gudsen.88888888'                            drop= 0.016 diff=2222 head=ec2ca207b3cae5edc478e1aa62411259
-  [cdecl_no_init_decrypt    ] key=b'GUDSEN.88888888'                            drop= 0.016 diff=2222 head=ec2ca207b3cae5edc478e1aa62411259
-  [cdecl_no_init_decrypt    ] key=b'Gudsen.888888888'                           drop= 0.016 diff=2222 head=ec2ca207b3cae5edc478e1aa62411259
-  [cdecl_no_init_decrypt    ] key=b'MOZA'                                       drop= 0.016 diff=2222 head=ec2ca207b3cae5edc478e1aa62411259
-  [cdecl_no_init_decrypt    ] key=b'moza'                                       drop= 0.016 diff=2222 head=ec2ca207b3cae5edc478e1aa62411259
-  [cdecl_no_init_decrypt    ] key=b'[RS21-D03-HW_FW-CU-V03][FSR][1][5]'         drop= 0.016 diff=2222 head=ec2ca207b3cae5edc478e1aa62411259
-  [cdecl_no_init_decrypt    ] key=b'D03'                                        drop= 0.016 diff=2222 head=ec2ca207b3cae5edc478e1aa62411259
-  [cdecl_no_init_decrypt    ] key=b'FSR'                                        drop= 0.016 diff=2222 head=ec2ca207b3cae5edc478e1aa62411259
-  [cdecl_no_init_decrypt    ] key=b'Gudsen.88888888\n'                          drop= 0.016 diff=2222 head=ec2ca207b3cae5edc478e1aa62411259
-  [cdecl_no_init_decrypt    ] key=b'Gudsen.88888888\r\n'                        drop= 0.016 diff=2222 head=ec2ca207b3cae5edc478e1aa62411259
-  [cdecl_no_init_decrypt    ] key=b'Gudsen'                                     drop= 0.016 diff=2222 head=ec2ca207b3cae5edc478e1aa62411259
-  [cdecl_no_init_decrypt    ] key=b'88888888'                                   drop= 0.016 diff=2222 head=ec2ca207b3cae5edc478e1aa62411259
-  [cdecl_no_init_decrypt    ] key=b'password'                                   drop= 0.016 diff=2222 head=ec2ca207b3cae5edc478e1aa62411259
-  [stdcall_decrypt          ] key=b'Gudsen.88888888'                            drop= 0.018 diff=2215 head=0856cede9ba478d53adc99322e6639e1
-  [stdcall_decrypt          ] key=b'Gudsen.88888888\x00'                        drop= 0.018 diff=2215 head=0856cede9ba478d53adc99322e6639e1
-  [stdcall_decrypt          ] key=b'gudsen.88888888'                            drop= 0.014 diff=2223 head=f733fa0508091f4ce2a68b7c07500e68
-  [stdcall_decrypt          ] key=b'GUDSEN.88888888'                            drop= 0.014 diff=2225 head=d2522f67d01444b103e3f1e509b81b8f
-  [stdcall_decrypt          ] key=b'Gudsen.888888888'                           drop= 0.020 diff=2216 head=be98440102b248465a72abcf7d29a6b5
-  [stdcall_decrypt          ] key=b'MOZA'                                       drop= 0.012 diff=2220 head=4fdbb4c24914377e13a09fde2ff97ca2
-  [stdcall_decrypt          ] key=b'moza'                                       drop= 0.023 diff=2221 head=cc3a391ec4167c48614e745adb378aed
-  [stdcall_decrypt          ] key=b'[RS21-D03-HW_FW-CU-V03][FSR][1][5]'         drop= 0.007 diff=2223 head=9eaba83a358a1f7b6918342c49a463ab
-  [stdcall_decrypt          ] key=b'D03'                                        drop= 0.020 diff=2222 head=d79bb79e38200c8e11731d56ec8abfd7
-  [stdcall_decrypt          ] key=b'FSR'                                        drop= 0.022 diff=2227 head=52de426cfdfae7016d79ca5128b4b9b1
-  [stdcall_decrypt          ] key=b'Gudsen.88888888\n'                          drop= 0.016 diff=2220 head=6ec2ad8ae54ffbcdab6fd7b8b2484ef1
-  [stdcall_decrypt          ] key=b'Gudsen.88888888\r\n'                        drop= 0.020 diff=2220 head=6275be85cbdebfac2002c7a3687be484
-  [stdcall_decrypt          ] key=b'Gudsen'                                     drop= 0.021 diff=2225 head=871fe216e92df6bb99fd270f3a4bb5b2
-  [stdcall_decrypt          ] key=b'88888888'                                   drop= 0.024 diff=2213 head=2ead1a67868db71583525679459f6087
-  [stdcall_decrypt          ] key=b'password'                                   drop= 0.030 diff=2222 head=b1cf80812ff6f6156abb5c0258f593db
 
-=== TOP 10 por queda de entropia ===
-  drop= 0.030 ent_after= 7.903 sig=cdecl_decrypt             key=b'password'
-    head: b1cf80812ff6f6156abb5c0258f593db
-  drop= 0.030 ent_after= 7.903 sig=stdcall_decrypt           key=b'password'
-    head: b1cf80812ff6f6156abb5c0258f593db
-  drop= 0.027 ent_after= 7.906 sig=cdecl_encrypt             key=b'88888888'
-    head: 6d5fc66fc66acefd1cb2425bb1bec30d
-  drop= 0.024 ent_after= 7.909 sig=cdecl_decrypt             key=b'88888888'
-    head: 2ead1a67868db71583525679459f6087
-  drop= 0.024 ent_after= 7.909 sig=cdecl_encrypt             key=b'[RS21-D03-HW_FW-CU-V03][FSR][1][5]'
-    head: e7f56e6cfe984db1253daa4837b12383
-  drop= 0.024 ent_after= 7.909 sig=stdcall_decrypt           key=b'88888888'
-    head: 2ead1a67868db71583525679459f6087
-  drop= 0.023 ent_after= 7.911 sig=cdecl_decrypt             key=b'moza'
-    head: cc3a391ec4167c48614e745adb378aed
-  drop= 0.023 ent_after= 7.910 sig=cdecl_encrypt             key=b'gudsen.88888888'
-    head: f4aac5948dcd86513648385ef9c638f6
-  drop= 0.023 ent_after= 7.911 sig=stdcall_decrypt           key=b'moza'
-    head: cc3a391ec4167c48614e745adb378aed
-  drop= 0.022 ent_after= 7.911 sig=cdecl_decrypt             key=b'FSR'
-    head: 52de426cfdfae7016d79ca5128b4b9b1
+# ---------- INSTALACAO DO FRIDA (rodar 1 vez) ----------
+python -m pip install frida-tools
 
-Nenhum candidato promissor.
-PS C:\Users\exoli\OneDrive\Pessoal\reverse-engineering-moza>
+
+# ---------- SCRIPT DO HOOK ----------
+$scriptPath = "$env:USERPROFILE\Desktop\moza-re\hook_tea.py"
+
+@'
+import frida
+import sys
+import time
+from pathlib import Path
+
+# JavaScript do hook — sera injetado no processo alvo pelo Frida
+JS = r"""
+'use strict';
+
+// Aguardar crypt.dll ser carregada (as vezes carrega lazy)
+function hookCrypt() {
+    let mod = null;
+    try {
+        mod = Process.getModuleByName("crypt.dll");
+    } catch (e) {
+        return false;
+    }
+
+    const teaInit    = Module.getExportByName("crypt.dll", "Tea_Init");
+    const teaEncrypt = Module.getExportByName("crypt.dll", "Tea_Encrypt");
+    const teaDecrypt = Module.getExportByName("crypt.dll", "Tea_Decrypt");
+
+    console.log("[hook] crypt.dll base: " + mod.base);
+    console.log("[hook] Tea_Init    @ " + teaInit);
+    console.log("[hook] Tea_Encrypt @ " + teaEncrypt);
+    console.log("[hook] Tea_Decrypt @ " + teaDecrypt);
+
+    // ========================================================
+    // Tea_Init(char* key) — CAPTURAR A CHAVE
+    // ========================================================
+    Interceptor.attach(teaInit, {
+        onEnter(args) {
+            const p = args[0];
+            console.log("\n=========================================");
+            console.log("[Tea_Init] CHAMADO!");
+            console.log("  arg0 ptr: " + p);
+            if (p.isNull()) {
+                console.log("  (NULL)");
+                return;
+            }
+            // Tentar ler como string C
+            try {
+                const s = p.readCString();
+                console.log("  como string C: " + JSON.stringify(s));
+            } catch (e) {
+                console.log("  string read falhou: " + e);
+            }
+            // Ler 128 bytes crus (independente de terminator)
+            try {
+                const bytes = p.readByteArray(128);
+                console.log("  128 bytes hex:");
+                console.log(hexdump(bytes, { ansi: false, offset: 0, header: false }));
+            } catch (e) {
+                console.log("  bytes read falhou: " + e);
+            }
+        },
+        onLeave(retval) {
+            console.log("[Tea_Init] retorno: " + retval);
+            // Apos Init, a chave interna esta em 0x100043D4 (RVA)
+            // Ler ela agora
+            try {
+                const base = Process.getModuleByName("crypt.dll").base;
+                const keyAddr = base.add(0x43D4);
+                const key = keyAddr.readByteArray(16);
+                console.log("  chave gerada em 0x100043D4 (16 bytes):");
+                console.log(hexdump(key, { ansi: false, header: false }));
+            } catch (e) {
+                console.log("  leitura da chave interna falhou: " + e);
+            }
+            console.log("=========================================\n");
+        }
+    });
+
+    // ========================================================
+    // Tea_Decrypt(void* buf, int len) — VER CIPHER/PLAIN
+    // ========================================================
+    Interceptor.attach(teaDecrypt, {
+        onEnter(args) {
+            this.buf = args[0];
+            this.len = args[1].toInt32();
+            console.log("\n[Tea_Decrypt] IN len=" + this.len);
+            try {
+                const b = this.buf.readByteArray(Math.min(48, this.len));
+                console.log("  cipher head (48):");
+                console.log(hexdump(b, { ansi: false, header: false }));
+            } catch (e) {}
+        },
+        onLeave(retval) {
+            console.log("[Tea_Decrypt] OUT ret=" + retval);
+            try {
+                const b = this.buf.readByteArray(Math.min(48, this.len));
+                console.log("  plain head (48):");
+                console.log(hexdump(b, { ansi: false, header: false }));
+            } catch (e) {}
+        }
+    });
+
+    // ========================================================
+    // Tea_Encrypt(void* buf, int len) — se aplicavel
+    // ========================================================
+    Interceptor.attach(teaEncrypt, {
+        onEnter(args) {
+            this.buf = args[0];
+            this.len = args[1].toInt32();
+            console.log("\n[Tea_Encrypt] IN len=" + this.len);
+        }
+    });
+
+    return true;
+}
+
+// Tentar hook imediato; se crypt.dll ainda nao carregou, esperar
+if (!hookCrypt()) {
+    console.log("[hook] crypt.dll ainda nao carregada, aguardando LoadLibrary...");
+    const loadLibW = Module.getExportByName("kernel32.dll", "LoadLibraryW");
+    Interceptor.attach(loadLibW, {
+        onLeave(retval) {
+            if (!retval.isNull()) {
+                setTimeout(() => hookCrypt(), 100);
+            }
+        }
+    });
+}
+"""
+
+def on_message(msg, data):
+    if msg["type"] == "error":
+        print("[FRIDA ERROR]", msg.get("stack", msg))
+    else:
+        pass  # msgs de console.log ja aparecem direto
+
+def find_target():
+    """Listar processos Moza rodando"""
+    targets_names = [
+        "MOZA Pit House.exe",
+        "FirmwareManager.exe",
+        "MOZADeviceService.exe",
+        "RacingLab.exe",
+        "MOZA Dashboard Studio.exe",
+    ]
+    procs = frida.enumerate_processes()
+    matches = [p for p in procs if p.name in targets_names]
+    if not matches:
+        print("[!] Nenhum processo Moza esta rodando.")
+        print("    Abra o MOZA Pit House e tente de novo.")
+        print("    Processos possiveis: " + ", ".join(targets_names))
+        return None
+    print("\nProcessos Moza detectados:")
+    for i, p in enumerate(matches):
+        print(f"  [{i}] {p.name} (PID {p.pid})")
+    if len(matches) == 1:
+        print(f"\n-> Anexando no unico processo detectado.")
+        return matches[0]
+    try:
+        idx = int(input("\nEscolhe o indice do processo (ou Ctrl+C para sair): ").strip())
+        return matches[idx]
+    except (ValueError, IndexError):
+        print("[!] Indice invalido.")
+        return None
+
+def main():
+    print("=" * 60)
+    print("FRIDA HOOK — Captura chave Tea_Init em runtime")
+    print("=" * 60)
+
+    proc = find_target()
+    if not proc:
+        return 1
+
+    print(f"\n[attach] {proc.name} (PID {proc.pid})...")
+    try:
+        session = frida.attach(proc.pid)
+    except Exception as e:
+        print(f"[!] Falha no attach: {e}")
+        print("    Tente rodar o PowerShell como Administrador.")
+        return 1
+
+    script = session.create_script(JS)
+    script.on("message", on_message)
+    script.load()
+
+    print("\n" + "=" * 60)
+    print("HOOK ATIVO — os args de Tea_Init aparecerao abaixo")
+    print("=" * 60)
+    print("\nAgora VOLTA no Pit House e faz uma acao que envolva firmware:")
+    print("  - Clicar em 'Firmware Update'")
+    print("  - Trocar de aba de dispositivo (volante/base)")
+    print("  - Verificar atualizacao disponivel")
+    print("  - Recarregar/reconectar volante")
+    print("\nQuando aparecer '[Tea_Init] CHAMADO!', a chave real vai estar visivel.")
+    print("Copie os bytes hex e me envie.")
+    print("\nCtrl+C para encerrar.\n")
+
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\n[detach] encerrando...")
+        try:
+            session.detach()
+        except:
+            pass
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
+'@ | Set-Content -Path $scriptPath -Encoding UTF8
+
+
+# ---------- EXECUTAR ----------
+Write-Host "`n=== ATENCAO ===" -ForegroundColor Yellow
+Write-Host "Abra o MOZA Pit House ANTES de continuar. O script vai listar processos Moza." -ForegroundColor Yellow
+Write-Host "Se nenhum processo aparecer, feche esta janela, abra o Pit House e rode de novo." -ForegroundColor Yellow
+Write-Host ""
+python $scriptPath
+
+
+# =============================================================================
+# APOS CAPTURAR A CHAVE
+# =============================================================================
+# Quando "[Tea_Init] CHAMADO!" aparecer, voce vera algo tipo:
+#
+#   [Tea_Init] CHAMADO!
+#     arg0 ptr: 0x1a2b3c4d
+#     como string C: "..."
+#     128 bytes hex:
+#     47 75 64 73 65 6E 2E ...   Gudsen. ...
+#   [Tea_Init] retorno: 0
+#     chave gerada em 0x100043D4 (16 bytes):
+#     XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX
+#
+# COPIAR:
+#   1. Os "128 bytes hex" (arg passado)
+#   2. Os "16 bytes da chave gerada"
+#   3. Cole ambos aqui na conversa que a gente decifra o firmware!
+#
+# =============================================================================
