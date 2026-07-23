@@ -1,49 +1,47 @@
 # =============================================================================
-# ENGENHARIA REVERSA MOZA — V9: FIX Frida API (Module.getExportByName removido)
+# ENGENHARIA REVERSA MOZA — V10: Frida hook + gravacao direto no Python
 # =============================================================================
 #
-# CONFIRMADO NA V7:
-#   - UI abriu ✓
-#   - Ao clicar 'Instalar Firmware' o pipeline dispara Tea_Init
-#   - MAS: TypeError na linha 13: Module.getExportByName nao existe mais
+# PROBLEMA V9:
+#   Start-Transcript do PowerShell nao captura stdout do Python subprocess.
+#   Log ficou quase vazio.
 #
-# CAUSA:
-#   Frida 17+ removeu Module.getExportByName. Precisamos usar:
-#     Module.load("crypt.dll").findExportByName("Tea_Init")
-#   OU
-#     Process.getModuleByName("crypt.dll").findExportByName("Tea_Init")
-#   OU
-#     Process.getModuleByName("crypt.dll").enumerateExports()
-#
-# V9:
-#   1. Reimplementa hook com API compativel (usa enumerateExports)
-#   2. Mantem watchers LoadLibrary/CreateFile
-#   3. Mesmo passo-a-passo: spawnar FirmwareManager, interagir, cancelar
+# V10:
+#   - Python grava output diretamente com open("output.txt", "a")
+#   - Cada mensagem vai pra tela E pro arquivo
+#   - Nao depende do Start-Transcript
 # =============================================================================
 
 python -m pip install frida-tools
 
-$logPath = "$env:USERPROFILE\Desktop\moza-re\output_v9.txt"
-Start-Transcript -Path $logPath -Force -IncludeInvocationHeader | Out-Null
-
 $env:QT_LOGGING_RULES = "*=true"
 $env:QT_FORCE_STDERR_LOGGING = "1"
 
-$scriptPath = "$env:USERPROFILE\Desktop\moza-re\hook_v9.py"
+$scriptPath = "$env:USERPROFILE\Desktop\moza-re\hook_v10.py"
 
 @'
 import frida, sys, time, os
 from pathlib import Path
+from datetime import datetime
 
 FMW = r"C:\Program Files (x86)\MOZA Pit House\bin\FirmwareManager.exe"
+LOG = Path.home() / "Desktop/moza-re/output_v10.txt"
+
+# Abrir log em modo append + line-buffered
+LOG.parent.mkdir(exist_ok=True)
+LOG_F = open(LOG, "w", encoding="utf-8", buffering=1)
+
+def log(msg):
+    line = f"{datetime.now().strftime('%H:%M:%S.%f')[:-3]}  {msg}"
+    print(line, flush=True)
+    LOG_F.write(line + "\n")
+    LOG_F.flush()
 
 JS = r"""
 'use strict';
-
 let hooked = false;
 
 function findExport(modName, symName) {
-    // Tentar API nova (Frida 17+)
     try {
         const mod = Process.getModuleByName(modName);
         if (mod.findExportByName) {
@@ -51,7 +49,6 @@ function findExport(modName, symName) {
             if (addr) return addr;
         }
     } catch (e) {}
-    // Tentar enumerar exports manualmente
     try {
         const mod = Process.getModuleByName(modName);
         const exps = mod.enumerateExports();
@@ -59,39 +56,32 @@ function findExport(modName, symName) {
             if (e.name === symName) return e.address;
         }
     } catch (e) {}
-    // Fallback: API antiga
-    try {
-        return Module.findExportByName(modName, symName);
-    } catch (e) {}
+    try { return Module.findExportByName(modName, symName); } catch (e) {}
     return null;
 }
 
 function tryHookCrypt() {
     if (hooked) return true;
     let mod = null;
-    try {
-        mod = Process.getModuleByName("crypt.dll");
-    } catch (e) {
-        return false;
-    }
-    send({tag: "info", msg: "crypt.dll carregada em " + mod.base + " size=" + mod.size});
+    try { mod = Process.getModuleByName("crypt.dll"); }
+    catch (e) { return false; }
 
-    const initAddr    = findExport("crypt.dll", "Tea_Init");
-    const encryptAddr = findExport("crypt.dll", "Tea_Encrypt");
-    const decryptAddr = findExport("crypt.dll", "Tea_Decrypt");
+    send({tag: "info", msg: "crypt.dll @ " + mod.base + " size=" + mod.size});
 
-    send({tag: "info", msg: "Tea_Init addr: " + initAddr});
-    send({tag: "info", msg: "Tea_Encrypt addr: " + encryptAddr});
-    send({tag: "info", msg: "Tea_Decrypt addr: " + decryptAddr});
+    const initAddr = findExport("crypt.dll", "Tea_Init");
+    const encAddr  = findExport("crypt.dll", "Tea_Encrypt");
+    const decAddr  = findExport("crypt.dll", "Tea_Decrypt");
+
+    send({tag: "info", msg: "Tea_Init=" + initAddr + " Tea_Encrypt=" + encAddr + " Tea_Decrypt=" + decAddr});
 
     if (!initAddr) {
-        send({tag: "info", msg: "*** ERRO: nao encontrou exports. Listando ates 20 ***"});
+        send({tag: "info", msg: "*** ERRO: exports nao encontrados. Listando ate 30 ***"});
         try {
             const exps = mod.enumerateExports();
-            for (let i = 0; i < Math.min(20, exps.length); i++) {
-                send({tag: "info", msg: "  export: " + exps[i].name + " @ " + exps[i].address});
+            for (let i = 0; i < Math.min(30, exps.length); i++) {
+                send({tag: "info", msg: "  export[" + i + "]: " + exps[i].name});
             }
-        } catch (e) { send({tag: "info", msg: "enum falhou: " + e}); }
+        } catch (e) { send({tag: "info", msg: "enum failed: " + e}); }
         return false;
     }
 
@@ -111,15 +101,14 @@ function tryHookCrypt() {
         onLeave(retval) {
             let info = {tag: "TEA_INIT_DONE", retval: retval.toString()};
             try {
-                const base = Process.getModuleByName("crypt.dll").base;
-                const key = base.add(0x43D4).readByteArray(16);
+                const key = Process.getModuleByName("crypt.dll").base.add(0x43D4).readByteArray(16);
                 info.key_hex = Array.from(new Uint8Array(key)).map(x => x.toString(16).padStart(2,"0")).join(" ");
             } catch (e) { info.err = String(e); }
             send(info);
         }
     });
 
-    Interceptor.attach(decryptAddr, {
+    Interceptor.attach(decAddr, {
         onEnter(args) {
             this.buf = args[0]; this.len = args[1].toInt32();
             let info = {tag: "TEA_DECRYPT_IN", len: this.len};
@@ -139,7 +128,7 @@ function tryHookCrypt() {
         }
     });
 
-    Interceptor.attach(encryptAddr, {
+    Interceptor.attach(encAddr, {
         onEnter(args) {
             this.buf = args[0]; this.len = args[1].toInt32();
             let info = {tag: "TEA_ENCRYPT_IN", len: this.len};
@@ -164,130 +153,120 @@ function tryHookCrypt() {
     return true;
 }
 
-// Watch LoadLibrary — crypt.dll pode ser lazy
 ["LoadLibraryA", "LoadLibraryW", "LoadLibraryExA", "LoadLibraryExW"].forEach(name => {
     try {
         const addr = findExport("kernel32.dll", name);
-        if (addr) {
-            Interceptor.attach(addr, {
-                onLeave() {
-                    tryHookCrypt();
-                }
-            });
-        }
+        if (addr) Interceptor.attach(addr, { onLeave() { tryHookCrypt(); } });
     } catch (e) {}
 });
 
-// Watch CreateFile
 ["CreateFileA", "CreateFileW"].forEach(name => {
     try {
         const addr = findExport("kernel32.dll", name);
-        if (addr) {
-            Interceptor.attach(addr, {
-                onEnter(args) {
-                    try {
-                        let s = name.endsWith("W") ? args[0].readUtf16String() : args[0].readCString();
-                        if (s && (s.toLowerCase().includes(".bin") || s.toLowerCase().includes("fmw") || s.toLowerCase().includes("firmware"))) {
-                            send({tag: "FILE_OPEN", path: s});
-                        }
-                    } catch (e) {}
-                }
-            });
-        }
+        if (addr) Interceptor.attach(addr, {
+            onEnter(args) {
+                try {
+                    let s = name.endsWith("W") ? args[0].readUtf16String() : args[0].readCString();
+                    if (s && (s.toLowerCase().includes(".bin") || s.toLowerCase().includes("fmw") || s.toLowerCase().includes("firmware"))) {
+                        send({tag: "FILE_OPEN", path: s});
+                    }
+                } catch (e) {}
+            }
+        });
     } catch (e) {}
 });
 
-// Tentar hook imediato
 tryHookCrypt();
-send({tag: "info", msg: "V9 watchers instalados"});
+send({tag: "info", msg: "V10 watchers instalados"});
 """
 
 def on_message(msg, data):
     if msg["type"] == "error":
-        print("[FRIDA ERROR]", msg.get("stack", msg), flush=True)
+        log(f"[FRIDA ERROR] {msg.get('stack', msg)}")
         return
     p = msg.get("payload", {})
     tag = p.get("tag", "?")
     if tag == "info":
-        print(f"  [info] {p.get('msg')}", flush=True)
+        log(f"  [info] {p.get('msg')}")
     elif tag == "TEA_INIT":
-        print("\n" + "*"*60, flush=True)
-        print(f"*** TEA_INIT CHAMADO ***", flush=True)
-        print(f"  ptr: {p.get('ptr')}", flush=True)
-        print(f"  como string: {p.get('string')!r}", flush=True)
-        print(f"  128 bytes hex: {p.get('bytes_hex')}", flush=True)
+        log("")
+        log("*"*60)
+        log("*** TEA_INIT CHAMADO ***")
+        log(f"  ptr: {p.get('ptr')}")
+        log(f"  como string: {p.get('string')!r}")
+        log(f"  128 bytes hex: {p.get('bytes_hex')}")
     elif tag == "TEA_INIT_DONE":
-        print(f"  Retorno: {p.get('retval')}", flush=True)
-        print(f"  *** CHAVE GERADA (16 bytes): {p.get('key_hex')} ***", flush=True)
-        print("*"*60 + "\n", flush=True)
+        log(f"  Retorno: {p.get('retval')}")
+        log(f"  *** CHAVE GERADA (16 bytes): {p.get('key_hex')} ***")
+        log("*"*60)
+        log("")
     elif tag == "TEA_ENCRYPT_IN":
-        print(f"\n[Tea_Encrypt IN] len={p.get('len')}", flush=True)
-        print(f"  plain head: {p.get('plain_head')}", flush=True)
+        log(f"[Tea_Encrypt IN] len={p.get('len')} plain head: {p.get('plain_head')}")
     elif tag == "TEA_ENCRYPT_OUT":
-        print(f"[Tea_Encrypt OUT]", flush=True)
-        print(f"  cipher head: {p.get('cipher_head')}", flush=True)
+        log(f"[Tea_Encrypt OUT] cipher head: {p.get('cipher_head')}")
     elif tag == "TEA_DECRYPT_IN":
-        print(f"\n[Tea_Decrypt IN] len={p.get('len')}", flush=True)
+        log(f"[Tea_Decrypt IN] len={p.get('len')} cipher: {p.get('cipher_head')}")
     elif tag == "TEA_DECRYPT_OUT":
-        print(f"[Tea_Decrypt OUT] plain: {p.get('plain_head')}", flush=True)
+        log(f"[Tea_Decrypt OUT] plain head: {p.get('plain_head')}")
     elif tag == "FILE_OPEN":
-        print(f"  [FILE] {p.get('path')}", flush=True)
+        log(f"  [FILE] {p.get('path')}")
     else:
-        print(f"  [?] {p}", flush=True)
+        log(f"  [?] {p}")
 
 def main():
+    log(f"=== V10 HOOK — {datetime.now()} ===")
+    log(f"Frida: {frida.__version__}")
+    log(f"Python: {sys.version.split()[0]} ({8 * (1 if sys.maxsize > 2**32 else 0) + 32}-bit)")
+
     device = frida.get_local_device()
-    print(f"Frida version: {frida.__version__}", flush=True)
-    print(f"Spawning FirmwareManager.exe...", flush=True)
+    log(f"Device: {device.name}")
 
     try:
         pid = device.spawn([FMW])
-        print(f"  PID: {pid}", flush=True)
+        log(f"Spawn PID: {pid}")
         session = device.attach(pid)
         script = session.create_script(JS)
         script.on("message", on_message)
         script.load()
+        log("Script loaded")
         device.resume(pid)
-        print(f"  UI subindo. Hooks instalados.", flush=True)
+        log("Process resumed — UI deve subir agora")
     except Exception as e:
-        print(f"[!] Erro no spawn: {e}", flush=True)
+        log(f"[!] Erro no spawn: {type(e).__name__}: {e}")
+        LOG_F.close()
         return 1
 
-    print("""
-=====================================================
-UI DEVE ABRIR. HOOKS ATIVOS.
-=====================================================
-Aguarde ate ver 'HOOKS APLICADOS COM SUCESSO' no console.
-
-Depois:
-- Selecione o volante FSR1
-- Clique em 'Update Firmware' ou 'Verificar'
-- Se aparecer versao disponivel, clique em INSTALAR
-- Quando aparecer tela de CONFIRMACAO / progresso, cancele
-- Tea_Init deve ter sido chamada na preparacao — chave estara acima
-
-Ctrl+C aqui pra encerrar.
-""", flush=True)
+    log("")
+    log("="*60)
+    log("AGORA NO PROGRAMA:")
+    log("  1. Aguarde 'HOOKS APLICADOS COM SUCESSO' aparecer")
+    log("  2. Selecione o volante FSR1")
+    log("  3. Clique em 'Update Firmware' / 'Instalar'")
+    log("  4. Cancele quando pedir confirmacao")
+    log("  5. Tea_Init sera capturado aqui")
+    log("  6. Ctrl+C para encerrar")
+    log("="*60)
 
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        print("\n[detach]", flush=True)
+        log("\n[detach] encerrando...")
         try: session.detach()
         except: pass
+    LOG_F.close()
     return 0
 
 if __name__ == "__main__":
     sys.exit(main())
 '@ | Set-Content -Path $scriptPath -Encoding UTF8
 
-Write-Host "`n=== RODANDO V9 (API Frida corrigida) ===" -ForegroundColor Cyan
+Write-Host "`n=== RODANDO V10 ===" -ForegroundColor Cyan
+Write-Host "Log em: $env:USERPROFILE\Desktop\moza-re\output_v10.txt" -ForegroundColor Yellow
+Write-Host ""
 python $scriptPath
-
-Stop-Transcript | Out-Null
 
 Remove-Item Env:QT_LOGGING_RULES -ErrorAction SilentlyContinue
 Remove-Item Env:QT_FORCE_STDERR_LOGGING -ErrorAction SilentlyContinue
 
-Write-Host "`n=== Log em: $logPath ===" -ForegroundColor Green
+Write-Host "`n=== Log gravado em: $env:USERPROFILE\Desktop\moza-re\output_v10.txt ===" -ForegroundColor Green
