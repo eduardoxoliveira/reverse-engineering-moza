@@ -1,58 +1,99 @@
 # =============================================================================
-# ENGENHARIA REVERSA MOZA — V7: FRIDA SPAWN NO FirmwareManager.exe
+# ENGENHARIA REVERSA MOZA — V9: FIX Frida API (Module.getExportByName removido)
 # =============================================================================
 #
-# DESCOBERTAS DA V6:
-#   - FirmwareManager.exe abre UI COMPLETA quando executado standalone
-#   - Detecta o volante FSR1 na COM3 automaticamente
-#   - Consulta os servers da Gudsen (backend.gudsen.vip) por updates
-#   - Tea_Init nao dispara so por abrir a UI — precisa CLICAR em Update
-#   - Qt logging funciona (?info@QMessageLogger produz output em stderr)
+# CONFIRMADO NA V7:
+#   - UI abriu ✓
+#   - Ao clicar 'Instalar Firmware' o pipeline dispara Tea_Init
+#   - MAS: TypeError na linha 13: Module.getExportByName nao existe mais
 #
-# ESTRATEGIA V7:
-#   Frida SPAWNA o FirmwareManager.exe (nao attach) — hook aplicado ANTES
-#   de qualquer codigo rodar. Assim, no primeiro chamada de Tea_Init/Encrypt
-#   que ocorrer (mesmo que seja durante uma checagem interna), capturamos.
+# CAUSA:
+#   Frida 17+ removeu Module.getExportByName. Precisamos usar:
+#     Module.load("crypt.dll").findExportByName("Tea_Init")
+#   OU
+#     Process.getModuleByName("crypt.dll").findExportByName("Tea_Init")
+#   OU
+#     Process.getModuleByName("crypt.dll").enumerateExports()
 #
-#   Nao precisa fazer flash de verdade — basta a UI abrir e voce interagir.
-#   Se ainda nao disparar, podemos apertar botao "Update" e assim que
-#   confirmarem, cancelar. Frida ja terá capturado Tea_Init na preparacao.
+# V9:
+#   1. Reimplementa hook com API compativel (usa enumerateExports)
+#   2. Mantem watchers LoadLibrary/CreateFile
+#   3. Mesmo passo-a-passo: spawnar FirmwareManager, interagir, cancelar
 # =============================================================================
 
 python -m pip install frida-tools
 
-$logPath = "$env:USERPROFILE\Desktop\moza-re\output_v7.txt"
+$logPath = "$env:USERPROFILE\Desktop\moza-re\output_v9.txt"
 Start-Transcript -Path $logPath -Force -IncludeInvocationHeader | Out-Null
-Write-Host "`n=== Log em: $logPath ===`n"
 
+$env:QT_LOGGING_RULES = "*=true"
+$env:QT_FORCE_STDERR_LOGGING = "1"
 
-$scriptPath = "$env:USERPROFILE\Desktop\moza-re\hook_spawn.py"
+$scriptPath = "$env:USERPROFILE\Desktop\moza-re\hook_v9.py"
 
 @'
-import frida
-import sys
-import time
-import os
+import frida, sys, time, os
 from pathlib import Path
 
 FMW = r"C:\Program Files (x86)\MOZA Pit House\bin\FirmwareManager.exe"
-WORKING_DIR = r"C:\Program Files (x86)\MOZA Pit House\bin"
 
 JS = r"""
 'use strict';
 
+let hooked = false;
+
+function findExport(modName, symName) {
+    // Tentar API nova (Frida 17+)
+    try {
+        const mod = Process.getModuleByName(modName);
+        if (mod.findExportByName) {
+            const addr = mod.findExportByName(symName);
+            if (addr) return addr;
+        }
+    } catch (e) {}
+    // Tentar enumerar exports manualmente
+    try {
+        const mod = Process.getModuleByName(modName);
+        const exps = mod.enumerateExports();
+        for (const e of exps) {
+            if (e.name === symName) return e.address;
+        }
+    } catch (e) {}
+    // Fallback: API antiga
+    try {
+        return Module.findExportByName(modName, symName);
+    } catch (e) {}
+    return null;
+}
+
 function tryHookCrypt() {
+    if (hooked) return true;
     let mod = null;
     try {
         mod = Process.getModuleByName("crypt.dll");
     } catch (e) {
         return false;
     }
-    send({tag: "info", msg: "crypt.dll carregada em " + mod.base});
+    send({tag: "info", msg: "crypt.dll carregada em " + mod.base + " size=" + mod.size});
 
-    const initAddr    = Module.getExportByName("crypt.dll", "Tea_Init");
-    const encryptAddr = Module.getExportByName("crypt.dll", "Tea_Encrypt");
-    const decryptAddr = Module.getExportByName("crypt.dll", "Tea_Decrypt");
+    const initAddr    = findExport("crypt.dll", "Tea_Init");
+    const encryptAddr = findExport("crypt.dll", "Tea_Encrypt");
+    const decryptAddr = findExport("crypt.dll", "Tea_Decrypt");
+
+    send({tag: "info", msg: "Tea_Init addr: " + initAddr});
+    send({tag: "info", msg: "Tea_Encrypt addr: " + encryptAddr});
+    send({tag: "info", msg: "Tea_Decrypt addr: " + decryptAddr});
+
+    if (!initAddr) {
+        send({tag: "info", msg: "*** ERRO: nao encontrou exports. Listando ates 20 ***"});
+        try {
+            const exps = mod.enumerateExports();
+            for (let i = 0; i < Math.min(20, exps.length); i++) {
+                send({tag: "info", msg: "  export: " + exps[i].name + " @ " + exps[i].address});
+            }
+        } catch (e) { send({tag: "info", msg: "enum falhou: " + e}); }
+        return false;
+    }
 
     Interceptor.attach(initAddr, {
         onEnter(args) {
@@ -118,43 +159,47 @@ function tryHookCrypt() {
         }
     });
 
+    hooked = true;
+    send({tag: "info", msg: "HOOKS APLICADOS COM SUCESSO"});
     return true;
 }
 
-// Watch LoadLibrary — crypt.dll pode ser carregada lazy
+// Watch LoadLibrary — crypt.dll pode ser lazy
 ["LoadLibraryA", "LoadLibraryW", "LoadLibraryExA", "LoadLibraryExW"].forEach(name => {
     try {
-        const addr = Module.getExportByName("kernel32.dll", name);
-        Interceptor.attach(addr, {
-            onLeave() {
-                if (tryHookCrypt()) {
-                    // Sucesso, remove watch se possivel
+        const addr = findExport("kernel32.dll", name);
+        if (addr) {
+            Interceptor.attach(addr, {
+                onLeave() {
+                    tryHookCrypt();
                 }
-            }
-        });
+            });
+        }
     } catch (e) {}
 });
 
-// Watch CreateFile pra ver o que o FirmwareManager le
+// Watch CreateFile
 ["CreateFileA", "CreateFileW"].forEach(name => {
     try {
-        const addr = Module.getExportByName("kernel32.dll", name);
-        Interceptor.attach(addr, {
-            onEnter(args) {
-                try {
-                    let s = name.endsWith("W") ? args[0].readUtf16String() : args[0].readCString();
-                    if (s && (s.toLowerCase().includes(".bin") || s.toLowerCase().includes("fmw") || s.toLowerCase().includes("firmware"))) {
-                        send({tag: "FILE_OPEN", path: s});
-                    }
-                } catch (e) {}
-            }
-        });
+        const addr = findExport("kernel32.dll", name);
+        if (addr) {
+            Interceptor.attach(addr, {
+                onEnter(args) {
+                    try {
+                        let s = name.endsWith("W") ? args[0].readUtf16String() : args[0].readCString();
+                        if (s && (s.toLowerCase().includes(".bin") || s.toLowerCase().includes("fmw") || s.toLowerCase().includes("firmware"))) {
+                            send({tag: "FILE_OPEN", path: s});
+                        }
+                    } catch (e) {}
+                }
+            });
+        }
     } catch (e) {}
 });
 
-// Tentar hook inicial (caso crypt.dll ja esteja carregada por linker)
+// Tentar hook imediato
 tryHookCrypt();
-send({tag: "info", msg: "hooks instalados, aguardando calls..."});
+send({tag: "info", msg: "V9 watchers instalados"});
 """
 
 def on_message(msg, data):
@@ -173,7 +218,7 @@ def on_message(msg, data):
         print(f"  128 bytes hex: {p.get('bytes_hex')}", flush=True)
     elif tag == "TEA_INIT_DONE":
         print(f"  Retorno: {p.get('retval')}", flush=True)
-        print(f"  CHAVE GERADA (16 bytes): {p.get('key_hex')}", flush=True)
+        print(f"  *** CHAVE GERADA (16 bytes): {p.get('key_hex')} ***", flush=True)
         print("*"*60 + "\n", flush=True)
     elif tag == "TEA_ENCRYPT_IN":
         print(f"\n[Tea_Encrypt IN] len={p.get('len')}", flush=True)
@@ -184,7 +229,7 @@ def on_message(msg, data):
     elif tag == "TEA_DECRYPT_IN":
         print(f"\n[Tea_Decrypt IN] len={p.get('len')}", flush=True)
     elif tag == "TEA_DECRYPT_OUT":
-        print(f"[Tea_Decrypt OUT] plain head: {p.get('plain_head')}", flush=True)
+        print(f"[Tea_Decrypt OUT] plain: {p.get('plain_head')}", flush=True)
     elif tag == "FILE_OPEN":
         print(f"  [FILE] {p.get('path')}", flush=True)
     else:
@@ -192,11 +237,8 @@ def on_message(msg, data):
 
 def main():
     device = frida.get_local_device()
-    print(f"Spawning FirmwareManager.exe com Frida hook desde boot...", flush=True)
-
-    # Setar env vars antes do spawn
-    os.environ["QT_LOGGING_RULES"] = "*=true"
-    os.environ["QT_FORCE_STDERR_LOGGING"] = "1"
+    print(f"Frida version: {frida.__version__}", flush=True)
+    print(f"Spawning FirmwareManager.exe...", flush=True)
 
     try:
         pid = device.spawn([FMW])
@@ -206,21 +248,25 @@ def main():
         script.on("message", on_message)
         script.load()
         device.resume(pid)
-        print(f"  Resumido. Hooks ativos.", flush=True)
+        print(f"  UI subindo. Hooks instalados.", flush=True)
     except Exception as e:
         print(f"[!] Erro no spawn: {e}", flush=True)
         return 1
 
     print("""
 =====================================================
-UI DO FirmwareManager SUBIU. HOOKS ATIVOS EM crypt.dll
+UI DEVE ABRIR. HOOKS ATIVOS.
 =====================================================
-- Aguardando Tea_Init/Tea_Encrypt/Tea_Decrypt disparar
-- Interaja com a UI: selecione volante, clique em botoes de firmware
-- Se aparecer botao "Update" ou "Verify", clique — pode disparar Tea_Init
-- SE APARECER TELA DE CONFIRMACAO DE FLASH, CANCELE (nao precisa flashear)
+Aguarde ate ver 'HOOKS APLICADOS COM SUCESSO' no console.
 
-Ctrl+C aqui pra encerrar apos capturar o que precisa.
+Depois:
+- Selecione o volante FSR1
+- Clique em 'Update Firmware' ou 'Verificar'
+- Se aparecer versao disponivel, clique em INSTALAR
+- Quando aparecer tela de CONFIRMACAO / progresso, cancele
+- Tea_Init deve ter sido chamada na preparacao — chave estara acima
+
+Ctrl+C aqui pra encerrar.
 """, flush=True)
 
     try:
@@ -236,8 +282,12 @@ if __name__ == "__main__":
     sys.exit(main())
 '@ | Set-Content -Path $scriptPath -Encoding UTF8
 
-Write-Host "`n=== RODANDO V7 (Frida spawn) ===" -ForegroundColor Cyan
+Write-Host "`n=== RODANDO V9 (API Frida corrigida) ===" -ForegroundColor Cyan
 python $scriptPath
 
 Stop-Transcript | Out-Null
+
+Remove-Item Env:QT_LOGGING_RULES -ErrorAction SilentlyContinue
+Remove-Item Env:QT_FORCE_STDERR_LOGGING -ErrorAction SilentlyContinue
+
 Write-Host "`n=== Log em: $logPath ===" -ForegroundColor Green
