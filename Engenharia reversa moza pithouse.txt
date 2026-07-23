@@ -1,287 +1,225 @@
 # =============================================================================
-# ENGENHARIA REVERSA MOZA — HOOK FRIDA V2 (robusto)
+# ENGENHARIA REVERSA MOZA — ANALISE ESTATICA DAS CALL SITES DE Tea_Init
 # =============================================================================
 #
-# STATUS: os 2 processos detectados antes nao dispararam Tea_Init.
-# Provavel causa: crypt.dll so e carregada por processo especifico
-# (FirmwareManager.exe), ou soh quando ha update real de firmware.
+# CONTEXTO:
+#   Frida nao capturou Tea_Init nem em uso normal do Pit House. A logica de
+#   firmware provavelmente esta num subprocess que so roda em update real.
 #
-# ESTA VERSAO:
-#   1. Diagnostica quem carrega crypt.dll via tasklist /m
-#   2. Hooka TODOS os processos Moza que estiverem rodando
-#   3. Tambem hooka ReadFile — pra saber quando Pit House le arquivos .bin
-#   4. Detecta LoadLibrary — hookear crypt.dll no momento em que carrega
-#   5. Opcao de SPAWN — iniciar FirmwareManager do zero com Frida ja atachado
+# NOVA ESTRATEGIA:
+#   Fazer analise ESTATICA do FirmwareManager.exe (que importa Tea_Init de
+#   crypt.dll). Encontrar cada instrucao "call Tea_Init" e analisar o que
+#   e passado como argumento (a chave). Se for uma string constante,
+#   ela estara em .rdata do proprio FirmwareManager.exe.
 #
-# COMO USAR:
-#   1. Rodar o script
-#   2. Ele imprime quem tem crypt.dll agora
-#   3. Se ninguem tem, ele diz o que fazer no Pit House pra forcar
-#   4. Deixe o script rodando
-#   5. No Pit House, tente estas acoes (uma de cada vez):
-#      - Menu Home > Firmware Update
-#      - Selecionar dispositivo > Atualizar firmware
-#      - Restart Pit House com script ja rodando
-#   6. Quando Tea_Init disparar, os bytes aparecerao
+# COMO FUNCIONA:
+#   1. Localiza a IAT (Import Address Table) — entrada pra crypt.Tea_Init
+#   2. Encontra todas instrucoes "call [IAT_addr]" (indireto)
+#   3. Para cada call site, olha PUSHes anteriores (argumentos)
+#   4. Se argumento e "push imm32" apontando pra string em .rdata, extrai
+#   5. Faz mesmo pra Tea_Decrypt e Tea_Encrypt
 # =============================================================================
 
+python -m pip install capstone
 
-# ---------- INSTALACAO (se ainda nao tem) ----------
-python -m pip install frida-tools
-
-
-# ---------- DIAGNOSTICO INICIAL: quem carrega crypt.dll? ----------
-Write-Host "`n=== DIAGNOSTICO: processos que carregam crypt.dll agora ===" -ForegroundColor Cyan
-tasklist /m crypt.dll 2>&1
-
-
-# ---------- SCRIPT PYTHON: hooker multi-processo ----------
-$scriptPath = "$env:USERPROFILE\Desktop\moza-re\hook_tea_v2.py"
+$scriptPath = "$env:USERPROFILE\Desktop\moza-re\static_call_analysis.py"
 
 @'
-import frida
-import sys
-import time
-import subprocess
+import struct
+import re
 from pathlib import Path
+from capstone import Cs, CS_ARCH_X86, CS_MODE_32
 
-JS = r"""
-'use strict';
+EXE = Path("C:/Program Files (x86)/MOZA Pit House/bin/FirmwareManager.exe")
+data = EXE.read_bytes()
+print(f"FirmwareManager.exe: {len(data)} bytes")
 
-function tryHookCrypt() {
-    let mod = null;
-    try {
-        mod = Process.getModuleByName("crypt.dll");
-    } catch (e) {
-        return false;
-    }
+# ============================================================
+# Parser PE
+# ============================================================
+e_lfanew = struct.unpack_from("<I", data, 0x3C)[0]
+num_sec  = struct.unpack_from("<H", data, e_lfanew + 6)[0]
+opt_size = struct.unpack_from("<H", data, e_lfanew + 20)[0]
+image_base = struct.unpack_from("<I", data, e_lfanew + 24 + 28)[0]
+sec_off  = e_lfanew + 24 + opt_size
 
-    send({tag: "info", msg: "crypt.dll base = " + mod.base + " size=" + mod.size});
+sections = []
+for i in range(num_sec):
+    s = sec_off + i * 40
+    name = data[s:s+8].rstrip(b'\x00').decode('ascii', 'replace')
+    vaddr = struct.unpack_from("<I", data, s+12)[0]
+    vsize = struct.unpack_from("<I", data, s+8)[0]
+    raddr = struct.unpack_from("<I", data, s+20)[0]
+    rsize = struct.unpack_from("<I", data, s+16)[0]
+    sections.append((name, vaddr, vsize, raddr, rsize))
 
-    const initAddr    = Module.getExportByName("crypt.dll", "Tea_Init");
-    const encryptAddr = Module.getExportByName("crypt.dll", "Tea_Encrypt");
-    const decryptAddr = Module.getExportByName("crypt.dll", "Tea_Decrypt");
+def rva_to_off(rva):
+    for _, va, vs, ra, rs in sections:
+        if va <= rva < va + vs: return ra + (rva - va)
+    return None
+def va_to_off(va):
+    return rva_to_off(va - image_base)
+def off_to_va(off):
+    for _, va, vs, ra, rs in sections:
+        if ra <= off < ra + rs: return image_base + va + (off - ra)
+    return None
 
-    send({tag: "info", msg: "Tea_Init @ " + initAddr});
-    send({tag: "info", msg: "Tea_Encrypt @ " + encryptAddr});
-    send({tag: "info", msg: "Tea_Decrypt @ " + decryptAddr});
+print(f"ImageBase: 0x{image_base:X}")
+for name, va, vs, ra, rs in sections:
+    print(f"  section {name:<10} VA 0x{image_base+va:08X} size={vs:>8} file 0x{ra:X}")
 
-    Interceptor.attach(initAddr, {
-        onEnter(args) {
-            const p = args[0];
-            let info = {tag: "TEA_INIT", ptr: p.toString()};
-            try { info.string = p.readCString(); } catch (e) {}
-            try {
-                const b = p.readByteArray(128);
-                info.bytes_hex = Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2,"0")).join(" ");
-            } catch (e) {}
-            send(info);
-        },
-        onLeave(retval) {
-            let info = {tag: "TEA_INIT_DONE", retval: retval.toString()};
-            try {
-                const base = Process.getModuleByName("crypt.dll").base;
-                const keyAddr = base.add(0x43D4);
-                const b = keyAddr.readByteArray(16);
-                info.key_hex = Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2,"0")).join(" ");
-            } catch (e) { info.err = String(e); }
-            send(info);
-        }
-    });
+# ============================================================
+# Achar IAT entries para Tea_Init/Encrypt/Decrypt
+# Import Directory: data directory index 1
+# ============================================================
+opt_hdr = e_lfanew + 24
+dd = opt_hdr + 96 + 8  # index 1 = Import Directory
+imp_rva = struct.unpack_from("<I", data, dd)[0]
+imp_off = rva_to_off(imp_rva)
+print(f"\nImport Directory RVA=0x{imp_rva:X} off=0x{imp_off:X}")
 
-    Interceptor.attach(decryptAddr, {
-        onEnter(args) {
-            this.buf = args[0]; this.len = args[1].toInt32();
-            let info = {tag: "TEA_DECRYPT_IN", len: this.len};
-            try {
-                const b = this.buf.readByteArray(Math.min(32, this.len));
-                info.cipher_hex = Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2,"0")).join(" ");
-            } catch (e) {}
-            send(info);
-        },
-        onLeave() {
-            let info = {tag: "TEA_DECRYPT_OUT"};
-            try {
-                const b = this.buf.readByteArray(Math.min(32, this.len));
-                info.plain_hex = Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2,"0")).join(" ");
-            } catch (e) {}
-            send(info);
-        }
-    });
+# Iterar Import Descriptors
+TARGETS = ["Tea_Init", "Tea_Encrypt", "Tea_Decrypt"]
+iat_entries = {}  # func_name -> VA da IAT entry
+i = 0
+while True:
+    entry_off = imp_off + i * 20
+    ilt_rva = struct.unpack_from("<I", data, entry_off)[0]
+    iat_rva = struct.unpack_from("<I", data, entry_off + 16)[0]
+    name_rva = struct.unpack_from("<I", data, entry_off + 12)[0]
+    if ilt_rva == 0 and name_rva == 0: break
 
-    Interceptor.attach(encryptAddr, {
-        onEnter(args) {
-            this.buf = args[0]; this.len = args[1].toInt32();
-            send({tag: "TEA_ENCRYPT_IN", len: this.len});
-        }
-    });
+    dll_name_off = rva_to_off(name_rva)
+    dll_name = data[dll_name_off:data.index(b'\x00', dll_name_off)].decode('ascii', 'replace')
 
-    return true;
-}
-
-// Hook em LoadLibrary — captura crypt.dll quando for carregada
-function watchLoadLibrary() {
-    const targets = ["LoadLibraryA", "LoadLibraryW", "LoadLibraryExA", "LoadLibraryExW"];
-    targets.forEach(name => {
-        try {
-            const addr = Module.getExportByName("kernel32.dll", name);
-            Interceptor.attach(addr, {
-                onEnter(args) {
-                    try {
-                        let s = name.endsWith("W") ? args[0].readUtf16String() : args[0].readCString();
-                        if (s && s.toLowerCase().includes("crypt")) {
-                            send({tag: "info", msg: name + "(" + s + ")"});
-                        }
-                    } catch (e) {}
-                },
-                onLeave(retval) {
-                    if (!retval.isNull()) {
-                        setTimeout(() => tryHookCrypt(), 50);
-                    }
-                }
-            });
-        } catch (e) {}
-    });
-}
-
-// Hook em CreateFile — pra ver quando arquivos .bin sao abertos
-function watchFileOps() {
-    ["CreateFileA", "CreateFileW"].forEach(name => {
-        try {
-            const addr = Module.getExportByName("kernel32.dll", name);
-            Interceptor.attach(addr, {
-                onEnter(args) {
-                    try {
-                        let s = name.endsWith("W") ? args[0].readUtf16String() : args[0].readCString();
-                        if (s && (s.toLowerCase().includes(".bin") || s.toLowerCase().includes("fmw"))) {
-                            send({tag: "FILE_OPEN", path: s});
-                        }
-                    } catch (e) {}
-                }
-            });
-        } catch (e) {}
-    });
-}
-
-// Bootstrap
-if (tryHookCrypt()) {
-    send({tag: "info", msg: "hook aplicado direto (crypt.dll ja carregada)"});
-} else {
-    send({tag: "info", msg: "crypt.dll nao carregada — instalando watchers"});
-    watchLoadLibrary();
-}
-watchFileOps();
-"""
-
-def on_message(msg, data):
-    if msg["type"] == "error":
-        print("[FRIDA ERROR]", msg.get("stack", msg))
-        return
-    p = msg.get("payload", {})
-    tag = p.get("tag", "?")
-    if tag == "info":
-        print("  [info]", p.get("msg", ""))
-    elif tag == "TEA_INIT":
-        print("\n" + "="*60)
-        print("*** TEA_INIT CHAMADO ***")
-        print(f"  ptr: {p.get('ptr')}")
-        print(f"  como string: {p.get('string')!r}")
-        print(f"  128 bytes: {p.get('bytes_hex')}")
-    elif tag == "TEA_INIT_DONE":
-        print(f"  Retorno: {p.get('retval')}")
-        print(f"  CHAVE GERADA (16 bytes): {p.get('key_hex')}")
-        print("="*60 + "\n")
-    elif tag == "TEA_DECRYPT_IN":
-        print(f"\n[Tea_Decrypt IN] len={p.get('len')}")
-        print(f"  cipher: {p.get('cipher_hex')}")
-    elif tag == "TEA_DECRYPT_OUT":
-        print(f"[Tea_Decrypt OUT]")
-        print(f"  plain:  {p.get('plain_hex')}")
-    elif tag == "TEA_ENCRYPT_IN":
-        print(f"\n[Tea_Encrypt IN] len={p.get('len')}")
-    elif tag == "FILE_OPEN":
-        print(f"\n[FILE] Aberto: {p.get('path')}")
-    else:
-        print("  [?]", p)
-
-def list_moza_processes():
-    device = frida.get_local_device()
-    targets = ["MOZA Pit House.exe", "FirmwareManager.exe", "MOZADeviceService.exe",
-               "RacingLab.exe", "MOZA Dashboard Studio.exe"]
-    return [p for p in device.enumerate_processes() if p.name in targets]
-
-def attach_and_hook(pid, name, sessions_list):
-    print(f"\n[attach] {name} (PID {pid})...")
-    try:
-        s = frida.attach(pid)
-        script = s.create_script(JS)
-        script.on("message", on_message)
-        script.load()
-        sessions_list.append((s, name))
-        print(f"  hook aplicado")
-        return True
-    except Exception as e:
-        print(f"  falhou: {e}")
-        return False
-
-def main():
-    print("="*60)
-    print("FRIDA HOOK V2 — multi-processo + LoadLibrary watcher")
-    print("="*60)
-
-    procs = list_moza_processes()
-    if not procs:
-        print("\n[!] Nenhum processo Moza rodando.")
-        print("    Abra o MOZA Pit House e rode de novo.")
-        return 1
-
-    print(f"\nProcessos Moza detectados:")
-    for p in procs:
-        print(f"  - {p.name} (PID {p.pid})")
-
-    sessions = []
-    for p in procs:
-        attach_and_hook(p.pid, p.name, sessions)
-
-    if not sessions:
-        print("\n[!] Nenhum hook conseguiu ser aplicado.")
-        return 1
-
-    print("\n" + "="*60)
-    print(f"HOOKS ATIVOS em {len(sessions)} processo(s)")
-    print("="*60)
-    print("""
-Agora no Pit House, tente estas acoes (uma de cada vez, aguardando 5s entre):
-
-  1. Abrir tab 'Home' ou dashboard principal
-  2. Menu 'Firmware Update' (se aparecer)
-  3. Selecionar seu volante FSR1 na sidebar
-  4. Clicar em 'Detect' ou botao de verificacao
-  5. Se aparecer 'Update disponivel', NAO clique — soh confirme que apareceu
-  6. Trocar de aba: Base -> Wheel -> Pedals
-  7. Ir em Settings do Pit House
-
-Se nada dispara Tea_Init, o Pit House talvez use processo separado.
-Nesse caso, ainda podemos capturar via [FILE] quando arquivos .bin sao lidos.
-
-Ctrl+C para encerrar.
-""")
-
-    try:
+    if dll_name.lower() == "crypt.dll":
+        print(f"\n  Import: {dll_name}")
+        # Iterar ILT ate 0
+        j = 0
         while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("\n[detach] encerrando...")
-        for s, _ in sessions:
-            try: s.detach()
-            except: pass
-    return 0
+            ilt_entry_off = rva_to_off(ilt_rva) + j * 4
+            iat_entry_va  = image_base + iat_rva + j * 4
+            ilt_val = struct.unpack_from("<I", data, ilt_entry_off)[0]
+            if ilt_val == 0: break
+            # Nome do simbolo (offset+2 pra pular ordinal hint)
+            sym_name_rva = ilt_val & 0x7FFFFFFF
+            if sym_name_rva:
+                sym_off = rva_to_off(sym_name_rva) + 2
+                sym_name = data[sym_off:data.index(b'\x00', sym_off)].decode('ascii', 'replace')
+                if sym_name in TARGETS:
+                    iat_entries[sym_name] = iat_entry_va
+                    print(f"    {sym_name}: IAT slot @ VA 0x{iat_entry_va:X}")
+            j += 1
+    i += 1
 
-if __name__ == "__main__":
-    sys.exit(main())
+# ============================================================
+# Buscar todas call sites de cada IAT entry no .text
+# call qword ptr [addr]  em 32-bit = FF 15 XX XX XX XX (indireto)
+# ============================================================
+md = Cs(CS_ARCH_X86, CS_MODE_32)
+
+# Localizar .text
+text_sec = next(s for s in sections if s[0] == ".text")
+text_va = image_base + text_sec[1]
+text_off = text_sec[3]
+text_size = text_sec[4]
+text_bytes = data[text_off:text_off + text_size]
+
+print(f"\n.text: VA 0x{text_va:X} size {text_size} file 0x{text_off:X}\n")
+
+for func_name, iat_va in iat_entries.items():
+    print(f"\n{'='*70}")
+    print(f"=== Call sites de {func_name} (IAT @ 0x{iat_va:X}) ===")
+    print('='*70)
+
+    # Buscar "FF 15 <LE de iat_va>" no .text
+    needle = bytes([0xFF, 0x15]) + struct.pack("<I", iat_va)
+    positions = []
+    pos = 0
+    while True:
+        pos = text_bytes.find(needle, pos)
+        if pos < 0: break
+        positions.append(pos)
+        pos += 1
+
+    print(f"Encontradas {len(positions)} call sites (FF 15 indirect)")
+
+    for site_idx, p in enumerate(positions):
+        call_va = text_va + p
+        print(f"\n  --- Call site #{site_idx+1} @ VA 0x{call_va:X} ---")
+        # Analisar 60 bytes ANTES do call para ver os push
+        start = max(0, p - 80)
+        code = text_bytes[start : p + 6]
+        code_va = text_va + start
+        instrs = list(md.disasm(code, code_va))
+        # Mostrar so as ultimas 12 instrucoes
+        instrs = instrs[-14:]
+        for ins in instrs:
+            marker = "  >>>" if ins.address == call_va else "     "
+            print(f"{marker} 0x{ins.address:08X}: {ins.mnemonic:<7} {ins.op_str}")
+
+        # Detectar push imm32 recentes — potenciais args
+        # Args em cdecl: ultimo push antes de call e o PRIMEIRO argumento (arg0)
+        push_imms = []
+        for ins in reversed(instrs[:-1]):  # exclude the call itself
+            if ins.mnemonic == "push":
+                op = ins.op_str
+                m = re.match(r'^(0x[0-9a-fA-F]+|\d+)$', op)
+                if m:
+                    v = int(op, 0)
+                    push_imms.append((ins.address, v))
+                elif op in ("eax", "ebx", "ecx", "edx", "esi", "edi"):
+                    push_imms.append((ins.address, f"reg:{op}"))
+                # Parar apos alguns pushes
+                if len(push_imms) >= 4: break
+            elif ins.mnemonic.startswith("call"):
+                break  # outra call, parar
+
+        for addr, val in push_imms:
+            if isinstance(val, int) and val > 0x400000:
+                # Tentar interpretar como VA — ler string na posicao
+                off = va_to_off(val)
+                if off:
+                    end = data.find(b'\x00', off)
+                    if end > 0 and end - off < 200:
+                        s = data[off:end]
+                        # se e ASCII imprimivel
+                        try:
+                            printable = all(32 <= b < 127 for b in s)
+                            if printable and len(s) > 0:
+                                print(f"        arg pointer 0x{val:08X} -> {s.decode('ascii')!r}")
+                                continue
+                        except: pass
+                    # senao mostrar bytes crus
+                    raw = data[off:off+32]
+                    print(f"        arg pointer 0x{val:08X} -> raw: {raw.hex(' ').upper()}")
+                else:
+                    print(f"        arg imm 0x{val:08X} (fora do binario)")
+            elif isinstance(val, int):
+                print(f"        arg imm 0x{val:X} = {val}")
+            else:
+                print(f"        arg {val}")
+
+print("\n\n=== BUSCA COMPLEMENTAR: strings 'chave-suspeitas' no .rdata ===\n")
+rdata_sec = next((s for s in sections if s[0] == ".rdata"), None)
+if rdata_sec:
+    rd = data[rdata_sec[3] : rdata_sec[3] + rdata_sec[4]]
+    # Buscar strings com "key", "Tea", "cipher", "Gudsen"
+    for kw in [b"Gudsen", b"key", b"Key", b"cipher", b"Tea", b"88888", b"secret"]:
+        pos = 0
+        while True:
+            i = rd.find(kw, pos)
+            if i < 0: break
+            # Extrair a string em volta (parar em NUL)
+            start = i
+            while start > 0 and 32 <= rd[start-1] < 127: start -= 1
+            end = i
+            while end < len(rd) and 32 <= rd[end] < 127: end += 1
+            s = rd[start:end]
+            if 5 < len(s) < 200:
+                print(f"  '{s.decode('ascii', 'replace')}'")
+            pos = end + 1
 '@ | Set-Content -Path $scriptPath -Encoding UTF8
 
-
-# ---------- EXECUTAR ----------
-Write-Host "`n=== INICIANDO HOOK V2 ===" -ForegroundColor Cyan
+Write-Host "`n=== RODANDO ANALISE ESTATICA ===" -ForegroundColor Cyan
 python $scriptPath
