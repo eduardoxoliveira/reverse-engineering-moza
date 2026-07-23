@@ -1,0 +1,331 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20260723111918
+Username: PC\exoli
+RunAs User: PC\exoli
+Configuration Name: 
+Machine: PC (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File .\Engenharia.ps1
+Process ID: 20064
+PSVersion: 5.1.26100.8875
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.8875
+BuildVersion: 10.0.26100.8875
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+
+=== Log sendo gravado em: C:\Users\exoli\Desktop\moza-re\output_v4.txt ===
+
+=== RODANDO ANALISE V4 (funcao completa) ===
+
+================================================================================
+# Tea_Init @ 0x00A31B70
+================================================================================
+  Funcao comeca em: 0xA31750
+  Instrucoes desmontadas: 847
+
+--- STRINGS ASCII REFERENCIADAS NA FUNCAO (4) ---
+  0x00A31BD3  push  ptr=0xCF5914  'Tea_Init key: '
+  0x00A31EF0  push  ptr=0xCF5928  'sectionIndex: '
+  0x00A31F10  push  ptr=0xCF593C  ' sectionVerify-md4-hex :'
+  0x00A31F3F  push  ptr=0xCF595C  'sectionData.size(): '
+
+--- CALLS INDIRETAS (IAT) â€” funcoes chamadas (34) ---
+  [0xE9B380] chamada 17x
+  [0xE9B150] chamada 9x
+  [0xE9B12C] chamada 8x
+  [0xE9B420] chamada 8x
+  [0xE9B404] chamada 7x
+  [0xE9B228] chamada 7x
+  [0xE9B138] chamada 6x
+  [0xE9B41C] chamada 6x
+  [0xE9B408] chamada 4x
+  [0xE9B388] chamada 3x
+  [0xE9A9D0] chamada 2x
+  [0xE9B1C0] chamada 2x
+  [0xE9B148] chamada 2x
+  [0xE9B14C] chamada 2x
+  [0xE9B390] chamada 2x
+  [0xE9A9FC] chamada 2x
+  [0xE9AAD0] chamada 2x
+  [0xE9B414] chamada 2x
+  [0xE9B1F8] chamada 1x
+  [0xE9B2C0] chamada 1x
+  [0xE9BD74] chamada 1x
+  [0xE9B384] chamada 1x
+  [0xE9AF70] chamada 1x
+  [0xE9AF78] chamada 1x
+  [0xE9AF7C] chamada 1x
+  [0xE9AF80] chamada 1x
+  [0xE9AF74] chamada 1x
+  [0xE9B0D4] chamada 1x
+  [0xE9AB50] chamada 1x
+  [0xE9AE58] chamada 1x
+  [0xE9B144] chamada 1x
+  [0xE9B304] chamada 1x
+  [0xE9B444] chamada 1x
+  [0xE9B440] chamada 1x
+
+--- DISASSEMBLY MARCADO (200 antes + 30 depois de 0xA31B70) ---
+  0x00A31A7A:                 mov      dword ptr [ebp - 0x30], eax
+  0x00A31A7D:                 mov      esi, dword ptr [eax + 4]
+  0x00A31A80:                 test     esi, esi
+  0x00A31A82:                 je       0xa31ac8
+  0x00A31A84:                 push     0
+  0x00A31A86:                 push     0
+  0x00A31A88:                 push     0
+  0x00A31A8A:                 lea      ecx, [ebp - 0x24]
+  0x00A31A8D:                 call     dword ptr [0xe9b12c]
+  0x00A31A93:                 lea      ecx, [ebp - 0x6c]
+  0x00A31A96:                 push     ecx
+  0x00A31A97:                 mov      ecx, eax
+  0x00A31A99:                 call     dword ptr [0xe9b138]
+  0x00A31A9F:                 mov      ecx, eax
+  0x00A31AA1:                 mov      byte ptr [ebp - 4], 8
+  0x00A31AA5:                 call     dword ptr [0xe9b41c]
+  0x00A31AAB:                 mov      ecx, dword ptr [ebp - 0x30]
+  0x00A31AAE:                 add      ecx, 8
+  0x00A31AB1:                 push     ecx
+  0x00A31AB2:                 mov      ecx, eax
+  0x00A31AB4:                 call     dword ptr [0xe9b404]
+  0x00A31ABA:                 lea      ecx, [ebp - 0x6c]
+  0x00A31ABD:                 call     dword ptr [0xe9b420]
+  0x00A31AC3:                 jmp      0xa32340
+  0x00A31AC8:                 lea      esi, [eax + 0xc]
+  0x00A31ACB:                 xor      ecx, ecx
+  0x00A31ACD:                 mov      eax, dword ptr [esi]
+  0x00A31ACF:                 cmp      dword ptr [eax + 0x18], ecx
+  0x00A31AD2:                 je       0xa31ae5
+  0x00A31AD4:                 push     dword ptr [eax + 0x1c]
+  0x00A31AD7:                 push     dword ptr [ebp - 0x64]
+  0x00A31ADA:                 call     dword ptr [0xe9b1f8]
+  0x00A31AE0:                 add      esp, 8
+  0x00A31AE3:                 mov      ecx, eax
+  0x00A31AE5:                 push     ecx
+  0x00A31AE6:                 push     dword ptr [ebp - 0x64]
+  0x00A31AE9:                 mov      ecx, esi
+  0x00A31AEB:                 call     0x401992
+  0x00A31AF0:                 mov      eax, dword ptr [eax]
+  0x00A31AF2:                 cmp      eax, dword ptr [esi]
+  0x00A31AF4:                 je       0xa31b09
+  0x00A31AF6:                 lea      ecx, [ebp - 0xcc]
+  0x00A31AFC:                 call     dword ptr [0xe9b148]
+  0x00A31B02:                 mov      ecx, 1
+  0x00A31B07:                 jmp      0xa31b1d
+  0x00A31B09:                 push     dword ptr [ebp - 0x64]
+  0x00A31B0C:                 lea      ecx, [ebp - 0xc8]
+  0x00A31B12:                 call     dword ptr [0xe9b14c]
+  0x00A31B18:                 mov      ecx, 2
+  0x00A31B1D:                 mov      dword ptr [ebp - 0x3c], ecx
+  0x00A31B20:                 lea      ecx, [ebp - 0x80]  <-- ref [ebp-0x80] (std::string local)
+  0x00A31B23:                 push     eax
+  0x00A31B24:                 call     dword ptr [0xe9b14c]
+  0x00A31B2A:                 mov      eax, dword ptr [ebp - 0x3c]
+  0x00A31B2D:                 mov      byte ptr [ebp - 4], 9
+  0x00A31B31:                 test     al, 2
+  0x00A31B33:                 je       0xa31b4a
+  0x00A31B35:                 and      eax, 0xfffffffd
+  0x00A31B38:                 lea      ecx, [ebp - 0xc8]
+  0x00A31B3E:                 mov      dword ptr [ebp - 0x3c], eax
+  0x00A31B41:                 call     dword ptr [0xe9b150]
+  0x00A31B47:                 mov      eax, dword ptr [ebp - 0x3c]
+  0x00A31B4A:                 test     al, 1
+  0x00A31B4C:                 je       0xa31b5a
+  0x00A31B4E:                 lea      ecx, [ebp - 0xcc]
+  0x00A31B54:                 call     dword ptr [0xe9b150]
+  0x00A31B5A:                 lea      eax, [ebp - 0x28]
+  0x00A31B5D:                 push     eax
+  0x00A31B5E:                 lea      ecx, [ebp - 0x80]  <-- ref [ebp-0x80] (std::string local)
+  0x00A31B61:                 call     dword ptr [0xe9b2c0]
+  0x00A31B67:                 cmp      dword ptr [eax + 0x14], 0xf
+  0x00A31B6B:                 jbe      0xa31b6f
+  0x00A31B6D:                 mov      eax, dword ptr [eax]
+  0x00A31B6F:                 push     eax
+  0x00A31B70:  *** TARGET *** call     0xa34b04
+  0x00A31B75:                 mov      ecx, dword ptr [ebp - 0x14]
+  0x00A31B78:                 add      esp, 4
+  0x00A31B7B:                 cmp      ecx, 0xf
+  0x00A31B7E:                 jbe      0xa31bb8
+  0x00A31B80:                 mov      edx, dword ptr [ebp - 0x28]
+  0x00A31B83:                 inc      ecx
+  0x00A31B84:                 mov      eax, edx
+  0x00A31B86:                 cmp      ecx, 0x1000
+  0x00A31B8C:                 jb       0xa31bae
+  0x00A31B8E:                 mov      edx, dword ptr [eax - 4]
+  0x00A31B91:                 add      ecx, 0x23
+  0x00A31B94:                 sub      eax, edx
+  0x00A31B96:                 add      eax, -4
+  0x00A31B99:                 cmp      eax, 0x1f
+  0x00A31B9C:                 jbe      0xa31bae
+  0x00A31B9E:                 push     0
+  0x00A31BA0:                 push     0
+  0x00A31BA2:                 push     0
+  0x00A31BA4:                 push     0
+  0x00A31BA6:                 push     0
+  0x00A31BA8:                 call     dword ptr [0xe9bd74]
+
+================================================================================
+# Tea_Encrypt @ 0x00A31ECA
+================================================================================
+  Funcao comeca em: 0xA31750
+  Instrucoes desmontadas: 847
+
+--- STRINGS ASCII REFERENCIADAS NA FUNCAO (4) ---
+  0x00A31BD3  push  ptr=0xCF5914  'Tea_Init key: '
+  0x00A31EF0  push  ptr=0xCF5928  'sectionIndex: '
+  0x00A31F10  push  ptr=0xCF593C  ' sectionVerify-md4-hex :'
+  0x00A31F3F  push  ptr=0xCF595C  'sectionData.size(): '
+
+--- CALLS INDIRETAS (IAT) â€” funcoes chamadas (34) ---
+  [0xE9B380] chamada 17x
+  [0xE9B150] chamada 9x
+  [0xE9B12C] chamada 8x
+  [0xE9B420] chamada 8x
+  [0xE9B404] chamada 7x
+  [0xE9B228] chamada 7x
+  [0xE9B138] chamada 6x
+  [0xE9B41C] chamada 6x
+  [0xE9B408] chamada 4x
+  [0xE9B388] chamada 3x
+  [0xE9A9D0] chamada 2x
+  [0xE9B1C0] chamada 2x
+  [0xE9B148] chamada 2x
+  [0xE9B14C] chamada 2x
+  [0xE9B390] chamada 2x
+  [0xE9A9FC] chamada 2x
+  [0xE9AAD0] chamada 2x
+  [0xE9B414] chamada 2x
+  [0xE9B1F8] chamada 1x
+  [0xE9B2C0] chamada 1x
+  [0xE9BD74] chamada 1x
+  [0xE9B384] chamada 1x
+  [0xE9AF70] chamada 1x
+  [0xE9AF78] chamada 1x
+  [0xE9AF7C] chamada 1x
+  [0xE9AF80] chamada 1x
+  [0xE9AF74] chamada 1x
+  [0xE9B0D4] chamada 1x
+  [0xE9AB50] chamada 1x
+  [0xE9AE58] chamada 1x
+  [0xE9B144] chamada 1x
+  [0xE9B304] chamada 1x
+  [0xE9B444] chamada 1x
+  [0xE9B440] chamada 1x
+
+--- DISASSEMBLY MARCADO (200 antes + 30 depois de 0xA31ECA) ---
+  0x00A31DD0:                 call     dword ptr [0xe9af74]
+  0x00A31DD6:                 lea      eax, [ebp - 0x78]
+  0x00A31DD9:                 push     eax
+  0x00A31DDA:                 lea      ecx, [ebp - 0x48]
+  0x00A31DDD:                 call     dword ptr [0xe9b228]
+  0x00A31DE3:                 lea      eax, [ebp - 0x6c]
+  0x00A31DE6:                 push     eax
+  0x00A31DE7:                 lea      ecx, [ebp - 0x44]
+  0x00A31DEA:                 call     dword ptr [0xe9b228]
+  0x00A31DF0:                 lea      ecx, [ebp - 0x6c]
+  0x00A31DF3:                 call     dword ptr [0xe9b380]
+  0x00A31DF9:                 lea      ecx, [ebp - 0x78]
+  0x00A31DFC:                 call     dword ptr [0xe9b380]
+  0x00A31E02:                 mov      eax, dword ptr [ebp - 0x48]
+  0x00A31E05:                 mov      byte ptr [ebp - 4], 0xe
+  0x00A31E09:                 cmp      dword ptr [eax + 4], 0
+  0x00A31E0D:                 jne      0xa31e28
+  0x00A31E0F:                 mov      eax, dword ptr [ebp - 0x44]
+  0x00A31E12:                 cmp      dword ptr [eax + 4], 0
+  0x00A31E16:                 jne      0xa31e28
+  0x00A31E18:                 mov      edi, dword ptr [edi]
+  0x00A31E1A:                 cmp      edi, 8
+  0x00A31E1D:                 je       0xa31e28
+  0x00A31E1F:                 cmp      edi, 0x10
+  0x00A31E22:                 jne      0xa3204f
+  0x00A31E28:                 mov      eax, dword ptr [ebp + 0x10]
+  0x00A31E2B:                 mov      dword ptr [ebp - 0x68], 0
+  0x00A31E32:                 sub      eax, 1
+  0x00A31E35:                 je       0xa31eab
+  0x00A31E37:                 sub      eax, 1
+  0x00A31E3A:                 jne      0xa320eb
+  0x00A31E40:                 call     0x438532
+  0x00A31E45:                 lea      ecx, [ebp - 0x54]
+  0x00A31E48:                 mov      edi, eax
+  0x00A31E4A:                 call     dword ptr [0xe9b388]
+  0x00A31E50:                 lea      eax, [ebp - 0x54]
+  0x00A31E53:                 mov      byte ptr [ebp - 4], 0x12
+  0x00A31E57:                 push     eax
+  0x00A31E58:                 lea      eax, [ebp - 0x48]
+  0x00A31E5B:                 mov      ecx, edi
+  0x00A31E5D:                 push     eax
+  0x00A31E5E:                 call     0x429d1b
+  0x00A31E63:                 test     eax, eax
+  0x00A31E65:                 jne      0xa320da
+  0x00A31E6B:                 mov      eax, dword ptr [ebp - 0x54]
+  0x00A31E6E:                 mov      edi, dword ptr [eax + 4]
+  0x00A31E71:                 mov      eax, dword ptr [ebp - 0x4c]
+  0x00A31E74:                 mov      dword ptr [ebp - 0x40], edi
+  0x00A31E77:                 cmp      edi, eax
+  0x00A31E79:                 jge      0xa31e97
+  0x00A31E7B:                 lea      eax, [ebp - 0x54]
+  0x00A31E7E:                 push     eax
+  0x00A31E7F:                 lea      ecx, [ebp - 0x48]
+  0x00A31E82:                 call     dword ptr [0xe9b0d4]
+  0x00A31E88:                 lea      ecx, [ebp - 0x54]
+  0x00A31E8B:                 mov      byte ptr [ebp - 4], 0xe
+  0x00A31E8F:                 call     dword ptr [0xe9b380]
+  0x00A31E95:                 jmp      0xa31eb1
+  0x00A31E97:                 lea      ecx, [ebp - 0x54]
+  0x00A31E9A:                 mov      dword ptr [ebp - 0x40], eax
+  0x00A31E9D:                 mov      edi, eax
+  0x00A31E9F:                 mov      byte ptr [ebp - 4], 0xe
+  0x00A31EA3:                 call     dword ptr [0xe9b380]
+  0x00A31EA9:                 jmp      0xa31eb1
+  0x00A31EAB:                 mov      edi, dword ptr [ebp - 0x4c]
+  0x00A31EAE:                 mov      dword ptr [ebp - 0x40], edi
+  0x00A31EB1:                 test     edi, edi
+  0x00A31EB3:                 js       0xa320f2
+  0x00A31EB9:                 mov      eax, dword ptr [ebp - 0x48]
+  0x00A31EBC:                 lea      ecx, [ebp - 0x48]
+  0x00A31EBF:                 mov      edi, dword ptr [eax + 4]
+  0x00A31EC2:                 call     dword ptr [0xe9a9fc]
+  0x00A31EC8:                 push     edi
+  0x00A31EC9:                 push     eax
+  0x00A31ECA:  *** TARGET *** call     0xa34afe
+  0x00A31ECF:                 add      esp, 8
+  0x00A31ED2:                 lea      ecx, [ebp - 0x24]
+  0x00A31ED5:                 push     0
+  0x00A31ED7:                 push     0
+  0x00A31ED9:                 push     0
+  0x00A31EDB:                 call     dword ptr [0xe9b12c]
+  0x00A31EE1:                 lea      ecx, [ebp - 0x84]
+  0x00A31EE7:                 push     ecx
+  0x00A31EE8:                 mov      ecx, eax
+  0x00A31EEA:                 call     dword ptr [0xe9b390]
+  0x00A31EF0:                 push     0xcf5928  <-- STRING: 'sectionIndex: '
+  0x00A31EF5:                 mov      ecx, eax
+  0x00A31EF7:                 mov      byte ptr [ebp - 4], 0x15
+  0x00A31EFB:                 call     dword ptr [0xe9b408]
+  0x00A31F01:                 mov      edi, dword ptr [ebp - 0x30]
+  0x00A31F04:                 mov      ecx, eax
+  0x00A31F06:                 push     edi
+
+================================================================================
+FIM DA ANALISE V4
+================================================================================
+
+INTERPRETACAO:
+
+Se voce ver algo tipo:
+  0x00XXXXXX  push  ptr=0x00YYYYYY  'ALGUMA STRING'
+  0x00XXXXXY  lea   ecx, [ebp-0x80]         <-- ref [ebp-0x80]
+  0x00XXXXXZ  call  ... (basic_string::assign ou construtor)
+
+Entao ALGUMA STRING e o que vai entrar no std::string que sera passado
+pra Tea_Init. Essa e a chave real!
+
+Priorize strings suspeitas: 'Gudsen.88888888', 'Gudsen.888', hex-like,
+qualquer coisa que nao seja mensagem de log/erro.
+**********************
+Windows PowerShell transcript end
+End time: 20260723111918
+**********************
