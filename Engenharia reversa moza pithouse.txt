@@ -1,54 +1,54 @@
 # =============================================================================
-# ENGENHARIA REVERSA MOZA — HOOK FRIDA PARA CAPTURAR CHAVE TEA EM RUNTIME
+# ENGENHARIA REVERSA MOZA — HOOK FRIDA V2 (robusto)
 # =============================================================================
 #
-# CONTEXTO:
-#   Testes anteriores confirmaram que a cifra e TEA/XTEA com 16 rounds em
-#   crypt.dll. Mas nenhuma string ASCII testada (Gudsen.88888888, MOZA, etc.)
-#   produziu a chave correta.
+# STATUS: os 2 processos detectados antes nao dispararam Tea_Init.
+# Provavel causa: crypt.dll so e carregada por processo especifico
+# (FirmwareManager.exe), ou soh quando ha update real de firmware.
 #
-#   Conclusao: "Gudsen.88888888" e provavelmente string de LOG.
-#   A chave real deve ser um blob binario passado em runtime.
-#
-# ESTRATEGIA:
-#   Usar Frida para injetar hook nas funcoes Tea_Init/Tea_Encrypt/Tea_Decrypt
-#   do crypt.dll enquanto o Pit House roda. Isso captura os ARGUMENTOS reais
-#   passados pela aplicacao (a chave verdadeira).
+# ESTA VERSAO:
+#   1. Diagnostica quem carrega crypt.dll via tasklist /m
+#   2. Hooka TODOS os processos Moza que estiverem rodando
+#   3. Tambem hooka ReadFile — pra saber quando Pit House le arquivos .bin
+#   4. Detecta LoadLibrary — hookear crypt.dll no momento em que carrega
+#   5. Opcao de SPAWN — iniciar FirmwareManager do zero com Frida ja atachado
 #
 # COMO USAR:
-#   1. Abrir o Pit House e deixar rodando com o volante conectado
-#   2. Rodar este script (vai listar os processos Moza detectados)
-#   3. Escolher o processo (geralmente "MOZA Pit House.exe" ou "FirmwareManager.exe")
-#   4. Com o hook ativo, VOLTAR no Pit House e disparar uma acao que envolva
-#      firmware — exemplos:
-#      - Abrir a tela de firmware update
-#      - Clicar em "verificar atualizacao"
-#      - Trocar de aba de dispositivo
-#      - Fazer a troca de UI (o script enviar-dashuiindex faz isso)
-#   5. Voltar no PowerShell — os args de Tea_Init vao aparecer no console
-#   6. Copiar os bytes hex da chave real e me mandar
+#   1. Rodar o script
+#   2. Ele imprime quem tem crypt.dll agora
+#   3. Se ninguem tem, ele diz o que fazer no Pit House pra forcar
+#   4. Deixe o script rodando
+#   5. No Pit House, tente estas acoes (uma de cada vez):
+#      - Menu Home > Firmware Update
+#      - Selecionar dispositivo > Atualizar firmware
+#      - Restart Pit House com script ja rodando
+#   6. Quando Tea_Init disparar, os bytes aparecerao
 # =============================================================================
 
 
-# ---------- INSTALACAO DO FRIDA (rodar 1 vez) ----------
+# ---------- INSTALACAO (se ainda nao tem) ----------
 python -m pip install frida-tools
 
 
-# ---------- SCRIPT DO HOOK ----------
-$scriptPath = "$env:USERPROFILE\Desktop\moza-re\hook_tea.py"
+# ---------- DIAGNOSTICO INICIAL: quem carrega crypt.dll? ----------
+Write-Host "`n=== DIAGNOSTICO: processos que carregam crypt.dll agora ===" -ForegroundColor Cyan
+tasklist /m crypt.dll 2>&1
+
+
+# ---------- SCRIPT PYTHON: hooker multi-processo ----------
+$scriptPath = "$env:USERPROFILE\Desktop\moza-re\hook_tea_v2.py"
 
 @'
 import frida
 import sys
 import time
+import subprocess
 from pathlib import Path
 
-# JavaScript do hook — sera injetado no processo alvo pelo Frida
 JS = r"""
 'use strict';
 
-// Aguardar crypt.dll ser carregada (as vezes carrega lazy)
-function hookCrypt() {
+function tryHookCrypt() {
     let mod = null;
     try {
         mod = Process.getModuleByName("crypt.dll");
@@ -56,190 +56,225 @@ function hookCrypt() {
         return false;
     }
 
-    const teaInit    = Module.getExportByName("crypt.dll", "Tea_Init");
-    const teaEncrypt = Module.getExportByName("crypt.dll", "Tea_Encrypt");
-    const teaDecrypt = Module.getExportByName("crypt.dll", "Tea_Decrypt");
+    send({tag: "info", msg: "crypt.dll base = " + mod.base + " size=" + mod.size});
 
-    console.log("[hook] crypt.dll base: " + mod.base);
-    console.log("[hook] Tea_Init    @ " + teaInit);
-    console.log("[hook] Tea_Encrypt @ " + teaEncrypt);
-    console.log("[hook] Tea_Decrypt @ " + teaDecrypt);
+    const initAddr    = Module.getExportByName("crypt.dll", "Tea_Init");
+    const encryptAddr = Module.getExportByName("crypt.dll", "Tea_Encrypt");
+    const decryptAddr = Module.getExportByName("crypt.dll", "Tea_Decrypt");
 
-    // ========================================================
-    // Tea_Init(char* key) — CAPTURAR A CHAVE
-    // ========================================================
-    Interceptor.attach(teaInit, {
+    send({tag: "info", msg: "Tea_Init @ " + initAddr});
+    send({tag: "info", msg: "Tea_Encrypt @ " + encryptAddr});
+    send({tag: "info", msg: "Tea_Decrypt @ " + decryptAddr});
+
+    Interceptor.attach(initAddr, {
         onEnter(args) {
             const p = args[0];
-            console.log("\n=========================================");
-            console.log("[Tea_Init] CHAMADO!");
-            console.log("  arg0 ptr: " + p);
-            if (p.isNull()) {
-                console.log("  (NULL)");
-                return;
-            }
-            // Tentar ler como string C
+            let info = {tag: "TEA_INIT", ptr: p.toString()};
+            try { info.string = p.readCString(); } catch (e) {}
             try {
-                const s = p.readCString();
-                console.log("  como string C: " + JSON.stringify(s));
-            } catch (e) {
-                console.log("  string read falhou: " + e);
-            }
-            // Ler 128 bytes crus (independente de terminator)
-            try {
-                const bytes = p.readByteArray(128);
-                console.log("  128 bytes hex:");
-                console.log(hexdump(bytes, { ansi: false, offset: 0, header: false }));
-            } catch (e) {
-                console.log("  bytes read falhou: " + e);
-            }
+                const b = p.readByteArray(128);
+                info.bytes_hex = Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2,"0")).join(" ");
+            } catch (e) {}
+            send(info);
         },
         onLeave(retval) {
-            console.log("[Tea_Init] retorno: " + retval);
-            // Apos Init, a chave interna esta em 0x100043D4 (RVA)
-            // Ler ela agora
+            let info = {tag: "TEA_INIT_DONE", retval: retval.toString()};
             try {
                 const base = Process.getModuleByName("crypt.dll").base;
                 const keyAddr = base.add(0x43D4);
-                const key = keyAddr.readByteArray(16);
-                console.log("  chave gerada em 0x100043D4 (16 bytes):");
-                console.log(hexdump(key, { ansi: false, header: false }));
-            } catch (e) {
-                console.log("  leitura da chave interna falhou: " + e);
-            }
-            console.log("=========================================\n");
+                const b = keyAddr.readByteArray(16);
+                info.key_hex = Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2,"0")).join(" ");
+            } catch (e) { info.err = String(e); }
+            send(info);
         }
     });
 
-    // ========================================================
-    // Tea_Decrypt(void* buf, int len) — VER CIPHER/PLAIN
-    // ========================================================
-    Interceptor.attach(teaDecrypt, {
+    Interceptor.attach(decryptAddr, {
         onEnter(args) {
-            this.buf = args[0];
-            this.len = args[1].toInt32();
-            console.log("\n[Tea_Decrypt] IN len=" + this.len);
+            this.buf = args[0]; this.len = args[1].toInt32();
+            let info = {tag: "TEA_DECRYPT_IN", len: this.len};
             try {
-                const b = this.buf.readByteArray(Math.min(48, this.len));
-                console.log("  cipher head (48):");
-                console.log(hexdump(b, { ansi: false, header: false }));
+                const b = this.buf.readByteArray(Math.min(32, this.len));
+                info.cipher_hex = Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2,"0")).join(" ");
             } catch (e) {}
+            send(info);
         },
-        onLeave(retval) {
-            console.log("[Tea_Decrypt] OUT ret=" + retval);
+        onLeave() {
+            let info = {tag: "TEA_DECRYPT_OUT"};
             try {
-                const b = this.buf.readByteArray(Math.min(48, this.len));
-                console.log("  plain head (48):");
-                console.log(hexdump(b, { ansi: false, header: false }));
+                const b = this.buf.readByteArray(Math.min(32, this.len));
+                info.plain_hex = Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2,"0")).join(" ");
             } catch (e) {}
+            send(info);
         }
     });
 
-    // ========================================================
-    // Tea_Encrypt(void* buf, int len) — se aplicavel
-    // ========================================================
-    Interceptor.attach(teaEncrypt, {
+    Interceptor.attach(encryptAddr, {
         onEnter(args) {
-            this.buf = args[0];
-            this.len = args[1].toInt32();
-            console.log("\n[Tea_Encrypt] IN len=" + this.len);
+            this.buf = args[0]; this.len = args[1].toInt32();
+            send({tag: "TEA_ENCRYPT_IN", len: this.len});
         }
     });
 
     return true;
 }
 
-// Tentar hook imediato; se crypt.dll ainda nao carregou, esperar
-if (!hookCrypt()) {
-    console.log("[hook] crypt.dll ainda nao carregada, aguardando LoadLibrary...");
-    const loadLibW = Module.getExportByName("kernel32.dll", "LoadLibraryW");
-    Interceptor.attach(loadLibW, {
-        onLeave(retval) {
-            if (!retval.isNull()) {
-                setTimeout(() => hookCrypt(), 100);
-            }
-        }
+// Hook em LoadLibrary — captura crypt.dll quando for carregada
+function watchLoadLibrary() {
+    const targets = ["LoadLibraryA", "LoadLibraryW", "LoadLibraryExA", "LoadLibraryExW"];
+    targets.forEach(name => {
+        try {
+            const addr = Module.getExportByName("kernel32.dll", name);
+            Interceptor.attach(addr, {
+                onEnter(args) {
+                    try {
+                        let s = name.endsWith("W") ? args[0].readUtf16String() : args[0].readCString();
+                        if (s && s.toLowerCase().includes("crypt")) {
+                            send({tag: "info", msg: name + "(" + s + ")"});
+                        }
+                    } catch (e) {}
+                },
+                onLeave(retval) {
+                    if (!retval.isNull()) {
+                        setTimeout(() => tryHookCrypt(), 50);
+                    }
+                }
+            });
+        } catch (e) {}
     });
 }
+
+// Hook em CreateFile — pra ver quando arquivos .bin sao abertos
+function watchFileOps() {
+    ["CreateFileA", "CreateFileW"].forEach(name => {
+        try {
+            const addr = Module.getExportByName("kernel32.dll", name);
+            Interceptor.attach(addr, {
+                onEnter(args) {
+                    try {
+                        let s = name.endsWith("W") ? args[0].readUtf16String() : args[0].readCString();
+                        if (s && (s.toLowerCase().includes(".bin") || s.toLowerCase().includes("fmw"))) {
+                            send({tag: "FILE_OPEN", path: s});
+                        }
+                    } catch (e) {}
+                }
+            });
+        } catch (e) {}
+    });
+}
+
+// Bootstrap
+if (tryHookCrypt()) {
+    send({tag: "info", msg: "hook aplicado direto (crypt.dll ja carregada)"});
+} else {
+    send({tag: "info", msg: "crypt.dll nao carregada — instalando watchers"});
+    watchLoadLibrary();
+}
+watchFileOps();
 """
 
 def on_message(msg, data):
     if msg["type"] == "error":
         print("[FRIDA ERROR]", msg.get("stack", msg))
+        return
+    p = msg.get("payload", {})
+    tag = p.get("tag", "?")
+    if tag == "info":
+        print("  [info]", p.get("msg", ""))
+    elif tag == "TEA_INIT":
+        print("\n" + "="*60)
+        print("*** TEA_INIT CHAMADO ***")
+        print(f"  ptr: {p.get('ptr')}")
+        print(f"  como string: {p.get('string')!r}")
+        print(f"  128 bytes: {p.get('bytes_hex')}")
+    elif tag == "TEA_INIT_DONE":
+        print(f"  Retorno: {p.get('retval')}")
+        print(f"  CHAVE GERADA (16 bytes): {p.get('key_hex')}")
+        print("="*60 + "\n")
+    elif tag == "TEA_DECRYPT_IN":
+        print(f"\n[Tea_Decrypt IN] len={p.get('len')}")
+        print(f"  cipher: {p.get('cipher_hex')}")
+    elif tag == "TEA_DECRYPT_OUT":
+        print(f"[Tea_Decrypt OUT]")
+        print(f"  plain:  {p.get('plain_hex')}")
+    elif tag == "TEA_ENCRYPT_IN":
+        print(f"\n[Tea_Encrypt IN] len={p.get('len')}")
+    elif tag == "FILE_OPEN":
+        print(f"\n[FILE] Aberto: {p.get('path')}")
     else:
-        pass  # msgs de console.log ja aparecem direto
+        print("  [?]", p)
 
-def find_target():
-    """Listar processos Moza rodando"""
-    targets_names = [
-        "MOZA Pit House.exe",
-        "FirmwareManager.exe",
-        "MOZADeviceService.exe",
-        "RacingLab.exe",
-        "MOZA Dashboard Studio.exe",
-    ]
-    procs = frida.get_local_device().enumerate_processes()
-    matches = [p for p in procs if p.name in targets_names]
-    if not matches:
-        print("[!] Nenhum processo Moza esta rodando.")
-        print("    Abra o MOZA Pit House e tente de novo.")
-        print("    Processos possiveis: " + ", ".join(targets_names))
-        return None
-    print("\nProcessos Moza detectados:")
-    for i, p in enumerate(matches):
-        print(f"  [{i}] {p.name} (PID {p.pid})")
-    if len(matches) == 1:
-        print(f"\n-> Anexando no unico processo detectado.")
-        return matches[0]
+def list_moza_processes():
+    device = frida.get_local_device()
+    targets = ["MOZA Pit House.exe", "FirmwareManager.exe", "MOZADeviceService.exe",
+               "RacingLab.exe", "MOZA Dashboard Studio.exe"]
+    return [p for p in device.enumerate_processes() if p.name in targets]
+
+def attach_and_hook(pid, name, sessions_list):
+    print(f"\n[attach] {name} (PID {pid})...")
     try:
-        idx = int(input("\nEscolhe o indice do processo (ou Ctrl+C para sair): ").strip())
-        return matches[idx]
-    except (ValueError, IndexError):
-        print("[!] Indice invalido.")
-        return None
+        s = frida.attach(pid)
+        script = s.create_script(JS)
+        script.on("message", on_message)
+        script.load()
+        sessions_list.append((s, name))
+        print(f"  hook aplicado")
+        return True
+    except Exception as e:
+        print(f"  falhou: {e}")
+        return False
 
 def main():
-    print("=" * 60)
-    print("FRIDA HOOK — Captura chave Tea_Init em runtime")
-    print("=" * 60)
+    print("="*60)
+    print("FRIDA HOOK V2 — multi-processo + LoadLibrary watcher")
+    print("="*60)
 
-    proc = find_target()
-    if not proc:
+    procs = list_moza_processes()
+    if not procs:
+        print("\n[!] Nenhum processo Moza rodando.")
+        print("    Abra o MOZA Pit House e rode de novo.")
         return 1
 
-    print(f"\n[attach] {proc.name} (PID {proc.pid})...")
-    try:
-        session = frida.attach(proc.pid)
-    except Exception as e:
-        print(f"[!] Falha no attach: {e}")
-        print("    Tente rodar o PowerShell como Administrador.")
+    print(f"\nProcessos Moza detectados:")
+    for p in procs:
+        print(f"  - {p.name} (PID {p.pid})")
+
+    sessions = []
+    for p in procs:
+        attach_and_hook(p.pid, p.name, sessions)
+
+    if not sessions:
+        print("\n[!] Nenhum hook conseguiu ser aplicado.")
         return 1
 
-    script = session.create_script(JS)
-    script.on("message", on_message)
-    script.load()
+    print("\n" + "="*60)
+    print(f"HOOKS ATIVOS em {len(sessions)} processo(s)")
+    print("="*60)
+    print("""
+Agora no Pit House, tente estas acoes (uma de cada vez, aguardando 5s entre):
 
-    print("\n" + "=" * 60)
-    print("HOOK ATIVO — os args de Tea_Init aparecerao abaixo")
-    print("=" * 60)
-    print("\nAgora VOLTA no Pit House e faz uma acao que envolva firmware:")
-    print("  - Clicar em 'Firmware Update'")
-    print("  - Trocar de aba de dispositivo (volante/base)")
-    print("  - Verificar atualizacao disponivel")
-    print("  - Recarregar/reconectar volante")
-    print("\nQuando aparecer '[Tea_Init] CHAMADO!', a chave real vai estar visivel.")
-    print("Copie os bytes hex e me envie.")
-    print("\nCtrl+C para encerrar.\n")
+  1. Abrir tab 'Home' ou dashboard principal
+  2. Menu 'Firmware Update' (se aparecer)
+  3. Selecionar seu volante FSR1 na sidebar
+  4. Clicar em 'Detect' ou botao de verificacao
+  5. Se aparecer 'Update disponivel', NAO clique — soh confirme que apareceu
+  6. Trocar de aba: Base -> Wheel -> Pedals
+  7. Ir em Settings do Pit House
+
+Se nada dispara Tea_Init, o Pit House talvez use processo separado.
+Nesse caso, ainda podemos capturar via [FILE] quando arquivos .bin sao lidos.
+
+Ctrl+C para encerrar.
+""")
 
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
         print("\n[detach] encerrando...")
-        try:
-            session.detach()
-        except:
-            pass
+        for s, _ in sessions:
+            try: s.detach()
+            except: pass
     return 0
 
 if __name__ == "__main__":
@@ -248,30 +283,5 @@ if __name__ == "__main__":
 
 
 # ---------- EXECUTAR ----------
-Write-Host "`n=== ATENCAO ===" -ForegroundColor Yellow
-Write-Host "Abra o MOZA Pit House ANTES de continuar. O script vai listar processos Moza." -ForegroundColor Yellow
-Write-Host "Se nenhum processo aparecer, feche esta janela, abra o Pit House e rode de novo." -ForegroundColor Yellow
-Write-Host ""
+Write-Host "`n=== INICIANDO HOOK V2 ===" -ForegroundColor Cyan
 python $scriptPath
-
-
-# =============================================================================
-# APOS CAPTURAR A CHAVE
-# =============================================================================
-# Quando "[Tea_Init] CHAMADO!" aparecer, voce vera algo tipo:
-#
-#   [Tea_Init] CHAMADO!
-#     arg0 ptr: 0x1a2b3c4d
-#     como string C: "..."
-#     128 bytes hex:
-#     47 75 64 73 65 6E 2E ...   Gudsen. ...
-#   [Tea_Init] retorno: 0
-#     chave gerada em 0x100043D4 (16 bytes):
-#     XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX XX
-#
-# COPIAR:
-#   1. Os "128 bytes hex" (arg passado)
-#   2. Os "16 bytes da chave gerada"
-#   3. Cole ambos aqui na conversa que a gente decifra o firmware!
-#
-# =============================================================================
