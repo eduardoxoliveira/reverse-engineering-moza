@@ -1,51 +1,113 @@
+# =============================================================================
+# ENGENHARIA REVERSA — MOZA PIT HOUSE / FSR1
+# Script executavel — copiar tudo e colar no PowerShell do PC pessoal
+# =============================================================================
+#
+# Pre-requisitos (rodar UMA vez no PC pessoal, na primeira vez):
+#
+#   winget install --id Python.Python.3.12 --accept-package-agreements --accept-source-agreements --silent
+#   python -m pip install lzokay pillow numpy capstone pycryptodome
+#
+#   $inst = "$env:USERPROFILE\Downloads\python-3.12-x86.exe"
+#   Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.12.7/python-3.12.7.exe" -OutFile $inst -UseBasicParsing
+#   Start-Process -FilePath $inst -ArgumentList @("/quiet","InstallAllUsers=0","TargetDir=$env:USERPROFILE\Python312-x86","PrependPath=0","Include_launcher=0","Include_test=0","Include_doc=0","Include_pip=1") -Wait
+#   & "$env:USERPROFILE\Python312-x86\python.exe" -m pip install lzokay
+#
+#   New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\Desktop\moza-re" | Out-Null
+#   Copy-Item "C:\Program Files (x86)\MOZA Pit House\bin\fmw_bin\4419.bin" "$env:USERPROFILE\Desktop\moza-re\4419_D03_FSR1.bin"
+#   Copy-Item "C:\Program Files (x86)\MOZA Pit House\bin\fmw_bin\4516.bin" "$env:USERPROFILE\Desktop\moza-re\4516_W13_FSR2.bin"
+#   Copy-Item "C:\Program Files (x86)\MOZA Pit House\bin\crypt.dll"        "$env:USERPROFILE\Desktop\moza-re\crypt.dll"
+#
+# =============================================================================
+# SCRIPT DA VEZ — subprocess isolado + queda de entropia
+# =============================================================================
+
 $PY32 = "$env:USERPROFILE\Python312-x86\python.exe"
 
-# Instalar todas libs de compressão
-& $PY32 -m pip install --quiet python-lzo lz4 zstandard
-
-$sc = "$env:USERPROFILE\Desktop\moza-re\mega_test.py"
-
+# WORKER — testa 1 combinacao por processo (imune a segfault)
+$worker = "$env:USERPROFILE\Desktop\moza-re\worker.py"
 @'
-import ctypes, struct, math, os, json
-from ctypes import c_char_p, c_int, c_void_p, c_uint, c_size_t, POINTER, create_string_buffer, WINFUNCTYPE, CFUNCTYPE
+import sys, ctypes, struct, math, json
+from ctypes import c_char_p, c_int, create_string_buffer
 from pathlib import Path
 from collections import Counter
-import itertools
 
-# ============================================================
-# Setup
-# ============================================================
+sig_name = sys.argv[1]
+key_hex = sys.argv[2]
+key_bytes = bytes.fromhex(key_hex)
+
 DLL_PATH = str(Path.home() / "Desktop/moza-re/crypt.dll")
-OUT = Path.home() / "Desktop/moza-re/mega"
-OUT.mkdir(exist_ok=True)
+FW = (Path.home() / "Desktop/moza-re/4419_D03_FSR1.bin").read_bytes()
+off = 0x20A0 + 1 * 8224
+orig = struct.unpack_from("<I", FW, off + 4)[0]
+comp = struct.unpack_from("<I", FW, off + 8)[0]
+ct = FW[off + 32 : off + 32 + comp]
+padded = ct + b'\x00' * ((8 - len(ct) % 8) % 8)
 
-def load_dll(mode="cdecl"):
-    return ctypes.CDLL(DLL_PATH) if mode == "cdecl" else ctypes.WinDLL(DLL_PATH)
-
-def entropy(data):
-    if not data: return 0.0
-    c = Counter(data); n = len(data)
+def entropy(d):
+    if not d: return 0.0
+    c = Counter(d); n = len(d)
     return -sum((v/n) * math.log2(v/n) for v in c.values())
 
-FW1 = (Path.home() / "Desktop/moza-re/4419_D03_FSR1.bin").read_bytes()
-FW2 = (Path.home() / "Desktop/moza-re/4516_W13_FSR2.bin").read_bytes()
+BASE_ENT = entropy(padded)
+result = {"sig": sig_name, "key_hex": key_hex, "status": "started"}
 
-def read_slot(fw, slot):
-    off = 0x20A0 + slot * 8224
-    orig = struct.unpack_from("<I", fw, off + 4)[0]
-    comp = struct.unpack_from("<I", fw, off + 8)[0]
-    ct = bytes(fw[off + 32 : off + 32 + comp])
-    padded = ct + b'\x00' * ((8 - len(ct) % 8) % 8)
-    return orig, comp, ct, padded
+try:
+    if sig_name.startswith("cdecl"):
+        dll = ctypes.CDLL(DLL_PATH)
+    else:
+        dll = ctypes.WinDLL(DLL_PATH)
 
-# Vou usar slot 1 do FSR1 como alvo principal (maior compressão -> teste mais discriminante)
-ORIG, COMP, CT, PADDED = read_slot(FW1, 1)
-BASE_ENT = entropy(PADDED)
-print(f"Slot 1 FSR1: orig={ORIG} comp={COMP} padded={len(PADDED)} ent={BASE_ENT:.3f}\n")
+    dll.Tea_Init.argtypes = [c_char_p]
+    dll.Tea_Init.restype  = c_int
+    dll.Tea_Decrypt.argtypes = [c_char_p, c_int]
+    dll.Tea_Decrypt.restype  = c_int
 
-# ============================================================
-# STRINGS candidatas
-# ============================================================
+    if "_no_init" not in sig_name:
+        dll.Tea_Init(key_bytes)
+
+    buf = create_string_buffer(padded, len(padded))
+
+    if "_encrypt" in sig_name:
+        dll.Tea_Encrypt.argtypes = [c_char_p, c_int]
+        dll.Tea_Encrypt(buf, len(padded))
+    else:
+        dll.Tea_Decrypt(buf, len(padded))
+
+    plain = bytes(buf.raw[:len(padded)])
+    ent = entropy(plain)
+    diff = sum(a != b for a, b in zip(padded, plain))
+
+    result.update({
+        "status": "ok",
+        "entropy_after": round(ent, 3),
+        "entropy_drop": round(BASE_ENT - ent, 3),
+        "diff_bytes": diff,
+        "head_hex": plain[:16].hex(),
+    })
+
+    if BASE_ENT - ent > 0.3:
+        out = Path.home() / f"Desktop/moza-re/mega/plain_{sig_name}_{key_hex[:20]}.bin"
+        out.parent.mkdir(exist_ok=True)
+        out.write_bytes(plain)
+        result["saved"] = str(out)
+
+except Exception as e:
+    result.update({"status": "error", "error": f"{type(e).__name__}: {str(e)[:100]}"})
+
+print(json.dumps(result))
+'@ | Set-Content -Path $worker -Encoding UTF8
+
+
+# ORCHESTRATOR — lanca cada teste isoladamente
+$orch = "$env:USERPROFILE\Desktop\moza-re\orchestrator.py"
+@'
+import subprocess, sys, json
+from pathlib import Path
+
+PY32 = str(Path.home() / "Python312-x86/python.exe")
+WORKER = str(Path.home() / "Desktop/moza-re/worker.py")
+
 STRINGS = [
     b"Gudsen.88888888",
     b"Gudsen.88888888\x00",
@@ -55,196 +117,82 @@ STRINGS = [
     b"MOZA",
     b"moza",
     b"[RS21-D03-HW_FW-CU-V03][FSR][1][5]",
-    b"RS21-D03-HW_FW-CU-V03",
     b"D03",
     b"FSR",
-    b"",
+    b"Gudsen.88888888\n",
+    b"Gudsen.88888888\r\n",
+    b"Gudsen",
+    b"88888888",
+    b"password",
 ]
 
-# ============================================================
-# ASSINATURAS de Tea_Init e Tea_Decrypt
-# ============================================================
-def make_signatures():
-    return [
-        # (nome, init_argtypes, init_restype, init_call, decrypt_argtypes, decrypt_restype, decrypt_call)
-        ("A_cdecl",
-         [c_char_p], c_int, lambda dll, s: dll.Tea_Init(s),
-         [c_char_p, c_int], c_int, lambda dll, buf, n: dll.Tea_Decrypt(buf, n),
-         "cdecl"),
-        ("A_stdcall",
-         [c_char_p], c_int, lambda dll, s: dll.Tea_Init(s),
-         [c_char_p, c_int], c_int, lambda dll, buf, n: dll.Tea_Decrypt(buf, n),
-         "stdcall"),
-        ("B_lenparam",
-         [c_char_p, c_int], c_int, lambda dll, s: dll.Tea_Init(s, len(s)),
-         [c_char_p, c_int], c_int, lambda dll, buf, n: dll.Tea_Decrypt(buf, n),
-         "cdecl"),
-        ("C_srcdst",
-         [c_char_p], c_int, lambda dll, s: dll.Tea_Init(s),
-         [c_char_p, c_char_p, c_int], c_int, lambda dll, buf, n: dll.Tea_Decrypt(buf, buf, n),
-         "cdecl"),
-        ("D_lenkeys",
-         [c_char_p, c_int], c_int, lambda dll, s: dll.Tea_Init(s, len(s)),
-         [c_char_p, c_int], c_int, lambda dll, buf, n: dll.Tea_Decrypt(buf, n),
-         "stdcall"),
-        ("E_voidret",
-         [c_char_p], None, lambda dll, s: dll.Tea_Init(s),
-         [c_char_p, c_int], None, lambda dll, buf, n: dll.Tea_Decrypt(buf, n),
-         "cdecl"),
-    ]
+SIGS = [
+    "cdecl_decrypt",
+    "cdecl_encrypt",
+    "cdecl_no_init_decrypt",
+    "stdcall_decrypt",
+]
 
-# ============================================================
-# TESTAR TODAS combinações Init(string) + Decrypt(buf)
-# ============================================================
-results = []
-success = None
+all_results = []
+print(f"Testando {len(SIGS) * len(STRINGS)} combinacoes em subprocessos isolados...\n")
 
-for sig_name, i_at, i_rt, i_call, d_at, d_rt, d_call, mode in make_signatures():
-    for key_str in STRINGS:
+for sig in SIGS:
+    for s in STRINGS:
+        cmd = [PY32, WORKER, sig, s.hex()]
         try:
-            dll = load_dll(mode)
-            dll.Tea_Init.argtypes = i_at
-            if i_rt: dll.Tea_Init.restype = i_rt
-            dll.Tea_Decrypt.argtypes = d_at
-            if d_rt: dll.Tea_Decrypt.restype = d_rt
+            r = subprocess.run(cmd, capture_output=True, timeout=15, text=True)
+            if r.returncode == 0:
+                try:
+                    data = json.loads(r.stdout.strip().splitlines()[-1])
+                    all_results.append(data)
+                    if data.get("status") == "ok":
+                        drop = data.get("entropy_drop", 0)
+                        head = data.get("head_hex", "")
+                        marker = " ***" if drop > 1.0 else ""
+                        print(f"  [{sig:<25}] key={s!r:<45} drop={drop:>6.3f} diff={data['diff_bytes']:>4} head={head}{marker}")
+                except json.JSONDecodeError:
+                    print(f"  [{sig:<25}] key={s!r:<45} bad_json")
+            else:
+                print(f"  [{sig:<25}] key={s!r:<45} *** CRASH rc={r.returncode} ***")
+                all_results.append({"sig": sig, "key_hex": s.hex(), "status": "crash"})
+        except subprocess.TimeoutExpired:
+            print(f"  [{sig:<25}] key={s!r:<45} TIMEOUT")
 
-            i_call(dll, key_str)
-            buf = create_string_buffer(PADDED, len(PADDED))
-            d_call(dll, buf, len(PADDED))
-            plain = bytes(buf.raw[:len(PADDED)])
-            ent = entropy(plain)
-            diff = sum(a != b for a, b in zip(PADDED, plain))
-            drop = BASE_ENT - ent
+outdir = Path.home() / "Desktop/moza-re/mega"
+outdir.mkdir(exist_ok=True)
+(outdir / "orchestrator_results.json").write_text(json.dumps(all_results, indent=2))
 
-            results.append({
-                "sig": sig_name, "key": repr(key_str),
-                "entropy_after": round(ent, 3),
-                "entropy_drop": round(drop, 3),
-                "bytes_changed": diff,
-                "head": plain[:16].hex(' ').upper(),
-                "plain_data": plain if drop > 0.5 else None
-            })
+ok = [r for r in all_results if r.get("status") == "ok"]
+ok.sort(key=lambda r: r.get("entropy_drop", 0), reverse=True)
+print(f"\n=== TOP 10 por queda de entropia ===")
+for r in ok[:10]:
+    print(f"  drop={r.get('entropy_drop',0):>6.3f} ent_after={r.get('entropy_after',0):>6.3f} "
+          f"sig={r['sig']:<25} key={bytes.fromhex(r['key_hex'])!r}")
+    print(f"    head: {r.get('head_hex','')}")
+
+best = [r for r in ok if r.get("entropy_drop", 0) > 0.5]
+if best:
+    import struct as _st
+    print(f"\n=== LZO nos {len(best)} candidatos ===")
+    for r in best[:5]:
+        plain_path = r.get("saved")
+        if not plain_path or not Path(plain_path).exists():
+            continue
+        plain = Path(plain_path).read_bytes()
+        try:
+            import lzokay
+            d = lzokay.decompress(plain[:2227], 8192)
+            sp, rv = _st.unpack("<II", d[:8])
+            print(f"  [{r['sig']}] LZO OK ({len(d)}b) SP=0x{sp:08X} RV=0x{rv:08X}")
+            print(f"    Head: {d[:32].hex(' ').upper()}")
+            if 0x08020000 <= rv <= 0x08100000:
+                print(f"    *** VETOR STM32 VALIDO ***")
         except Exception as e:
-            results.append({
-                "sig": sig_name, "key": repr(key_str),
-                "error": f"{type(e).__name__}: {str(e)[:80]}"
-            })
+            print(f"  [{r['sig']}] LZO falhou: {type(e).__name__}")
+else:
+    print("\nNenhum candidato promissor.")
+'@ | Set-Content -Path $orch -Encoding UTF8
 
-# Também: teste com Tea_Encrypt aplicada ao cipher (algumas impl usam encrypt como decrypt)
-print("=== Ranking por queda de entropia ===\n")
-ok_results = [r for r in results if "entropy_drop" in r]
-ok_results.sort(key=lambda r: r["entropy_drop"], reverse=True)
-
-print(f"{'sig':<14} {'key':<40} {'ent_after':>9} {'drop':>6} {'diff':>6} {'head'}")
-for r in ok_results[:25]:
-    print(f"{r['sig']:<14} {r['key'][:38]:<40} {r['entropy_after']:>9} {r['entropy_drop']:>6} {r['bytes_changed']:>6} {r['head']}")
-
-# Salvar todos com entropia caída significativamente
-promising = [r for r in ok_results if r["entropy_drop"] > 0.3]
-print(f"\n{len(promising)} resultados com queda de entropia > 0.3")
-
-for i, r in enumerate(promising[:10]):
-    if r["plain_data"]:
-        fname = OUT / f"promising_{i:02d}_{r['sig']}.bin"
-        fname.write_bytes(r["plain_data"])
-
-# ============================================================
-# Para os TOP promising, testar MUITOS formatos LZO
-# ============================================================
-def try_all_decompress(plain, orig_size, comp_size):
-    """Testa múltiplas libs/variantes LZO"""
-    tries = {}
-
-    # 1. lzokay (LZO1X)
-    try:
-        import lzokay
-        d = lzokay.decompress(plain[:comp_size], orig_size)
-        tries["lzokay_lzo1x"] = (True, len(d), d[:16].hex(' ').upper())
-    except Exception as e:
-        tries["lzokay_lzo1x"] = (False, str(e)[:60], None)
-
-    # 2. python-lzo default
-    try:
-        import lzo
-        d = lzo.decompress(plain[:comp_size], False, orig_size)
-        tries["pylzo_raw"] = (True, len(d), d[:16].hex(' ').upper())
-    except Exception as e:
-        tries["pylzo_raw"] = (False, str(e)[:60], None)
-
-    # 3. python-lzo com header
-    try:
-        import lzo
-        # Prepend header simulado
-        header = struct.pack(">I", orig_size)
-        d = lzo.decompress(header + plain[:comp_size])
-        tries["pylzo_hdr"] = (True, len(d), d[:16].hex(' ').upper())
-    except Exception as e:
-        tries["pylzo_hdr"] = (False, str(e)[:60], None)
-
-    # 4. Tentar como zlib/deflate (talvez não seja LZO)
-    try:
-        import zlib
-        d = zlib.decompress(plain[:comp_size])
-        tries["zlib"] = (True, len(d), d[:16].hex(' ').upper())
-    except Exception as e:
-        tries["zlib"] = (False, str(e)[:60], None)
-
-    # 5. Tentar como raw deflate (sem header zlib)
-    try:
-        import zlib
-        d = zlib.decompress(plain[:comp_size], -15)
-        tries["deflate_raw"] = (True, len(d), d[:16].hex(' ').upper())
-    except Exception as e:
-        tries["deflate_raw"] = (False, str(e)[:60], None)
-
-    # 6. LZ4
-    try:
-        import lz4.block
-        d = lz4.block.decompress(plain[:comp_size], uncompressed_size=orig_size)
-        tries["lz4"] = (True, len(d), d[:16].hex(' ').upper())
-    except Exception as e:
-        tries["lz4"] = (False, str(e)[:60], None)
-
-    # 7. Talvez plain JÁ SEJA o resultado (sem descompressão)
-    tries["raw"] = (True, len(plain), plain[:16].hex(' ').upper())
-
-    # 8. Verificar se primeiros 8 bytes fazem sentido como ARM vector table
-    try:
-        sp, rv = struct.unpack("<II", plain[:8])
-        if 0x20000000 <= sp <= 0x20200000 and 0x08000000 <= rv <= 0x08100000:
-            tries["arm_vector_valid"] = (True, "SP+RV validos", f"SP=0x{sp:08X} RV=0x{rv:08X}")
-    except:
-        pass
-
-    return tries
-
-print("\n=== Testando descompressão dos TOP 5 promising ===\n")
-for i, r in enumerate(promising[:5]):
-    if not r["plain_data"]: continue
-    print(f"\n--- #{i} [{r['sig']}] key={r['key']} ent_drop={r['entropy_drop']} ---")
-    print(f"  Head: {r['head']}")
-    tries = try_all_decompress(r["plain_data"], ORIG, COMP)
-    for method, res in tries.items():
-        if res[0] is True:
-            print(f"  {method}: SUCESSO ({res[1]})  head: {res[2]}")
-        else:
-            print(f"  {method}: {res[1]}")
-
-# ============================================================
-# Ranking por entropia baixa APÓS decrypt (< 6 típico de código/dados estruturados)
-# ============================================================
-print("\n=== Candidatos com entropia final BAIXA (indicativo de dados estruturados) ===\n")
-low_ent = [r for r in ok_results if r.get("entropy_after", 8) < 6.5]
-for r in low_ent[:10]:
-    print(f"  {r['sig']:<14} {r['key'][:38]:<40} ent={r['entropy_after']} drop={r['entropy_drop']}")
-
-# ============================================================
-# Salvar tabela completa em JSON
-# ============================================================
-summary = [{k: v for k, v in r.items() if k != 'plain_data'} for r in results]
-(OUT / "results.json").write_text(json.dumps(summary, indent=2))
-print(f"\nResultados completos em: {OUT / 'results.json'}")
-print(f"Amostras plain em: {OUT}")
-'@ | Set-Content -Path $sc -Encoding UTF8
-
-& $PY32 $sc
+# EXECUTAR
+Write-Host "`n[Executando orchestrador em subprocessos isolados]" -ForegroundColor Cyan
+& $PY32 $orch
