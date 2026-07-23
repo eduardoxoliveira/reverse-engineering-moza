@@ -1,50 +1,44 @@
 # =============================================================================
-# ENGENHARIA REVERSA MOZA — ANALISE V4: FUNCAO COMPLETA + STRINGS REFERENCIADAS
+# ENGENHARIA REVERSA MOZA — ANALISE V5: RASTREIO DE MAP + IAT NAMES + CALLERS
 # =============================================================================
 #
-# CHAVE DA V3:
-#   - So o FirmwareManager.exe usa crypt.dll (e nao importa Tea_Decrypt!)
-#   - Ele CIFRA os firmwares. O volante descriptografa internamente.
-#   - Unico caller de Tea_Init: 0xA31B70
-#   - Unico caller de Tea_Encrypt: 0xA31ECA
-#   - Tea_Init recebe um std::string (ecx apontando pra local var em ebp-0x80)
+# DESCOBERTAS DA V4:
+#   - Nenhuma string hardcoded na funcao 0xA31750 e a chave
+#   - Chave vem de MAP/HASH LOOKUP (call 0x401992)
+#   - std::string em [ebp-0x80] e construido a partir de outro std::string
+#     em [ebp-0xcc] ou [ebp-0xc8]
 #
-# V4:
-#   1. Desmonta a FUNCAO INTEIRA que contem 0xA31B70 (rastreia prologue/epilogue)
-#   2. Lista TODAS as strings referenciadas nessa funcao (push imm32 + lea)
-#   3. Analisa methods do std::string local (ebp-0x80)
-#   4. Mesma coisa pra funcao que contem 0xA31ECA (Tea_Encrypt)
-#   5. Grava output completo em output.txt automaticamente
+# V5 (multi-target):
+#   A) Resolve nomes dos IAT slots referenciados (msvcp140.dll, etc)
+#      pra saber quais metodos de std::string sao usados
+#   B) Desmonta a funcao interna 0x401992 (map lookup?)
+#   C) Desmonta funcao INTEIRA 0xA31750 (847 instrs) — inicio ao fim
+#   D) Busca CALLERS da funcao 0xA31750 (quem passa arg com a chave)
+#   E) Extrai strings do binario com padroes de chave (16 chars hex, base64)
 # =============================================================================
 
 python -m pip install capstone
 
-# Habilitar transcript — grava tudo em output.txt
-$logPath = "$env:USERPROFILE\Desktop\moza-re\output_v4.txt"
+# Start-Transcript
+$logPath = "$env:USERPROFILE\Desktop\moza-re\output_v5.txt"
 Start-Transcript -Path $logPath -Force -IncludeInvocationHeader | Out-Null
-Write-Host "`n=== Log sendo gravado em: $logPath ===`n"
+Write-Host "`n=== Log em: $logPath ===`n"
 
-$scriptPath = "$env:USERPROFILE\Desktop\moza-re\static_v4_function.py"
+$scriptPath = "$env:USERPROFILE\Desktop\moza-re\static_v5_deep.py"
 
 @'
-import struct, re, sys
+import struct, re
 from pathlib import Path
 from capstone import Cs, CS_ARCH_X86, CS_MODE_32
 
 EXE = Path("C:/Program Files (x86)/MOZA Pit House/bin/FirmwareManager.exe")
-CALL_SITES = {
-    "Tea_Init":    0x00A31B70,
-    "Tea_Encrypt": 0x00A31ECA,
-}
-LOCAL_VAR_STRING = 0x80   # ebp-0x80 = std::string local (visto na V3)
+FUNC_START = 0xA31750
+CALL_INTERNAL = 0x401992
+IAT_INTERESTS = [0xE9B148, 0xE9B14C, 0xE9B2C0, 0xE9B150, 0xE9B12C, 0xE9B138, 0xE9B420, 0xE9B380, 0xE9B14C]
 
 data = EXE.read_bytes()
 md = Cs(CS_ARCH_X86, CS_MODE_32)
-md.detail = True
 
-# ============================================================
-# PE parsing
-# ============================================================
 e_lfanew = struct.unpack_from("<I", data, 0x3C)[0]
 num_sec  = struct.unpack_from("<H", data, e_lfanew + 6)[0]
 opt_size = struct.unpack_from("<H", data, e_lfanew + 20)[0]
@@ -67,159 +61,209 @@ def va_to_off(va):
     return None
 
 def read_string_at_va(va, max_len=256):
-    """Le string ASCII em VA. Retorna None se nao for printavel."""
     off = va_to_off(va)
-    if off is None or off >= len(data): return None
+    if off is None: return None
     end = data.find(b'\x00', off, off + max_len)
     if end < 0: end = off + max_len
     s = data[off:end]
-    if len(s) < 1: return None
-    if not all(32 <= b < 127 for b in s): return None
+    if len(s) < 1 or not all(32 <= b < 127 for b in s): return None
     return s.decode('ascii')
 
 text_sec = next(s for s in sections if s[0] == ".text")
 text_va = image_base + text_sec[1]
 text_off = text_sec[3]
-text_size = text_sec[4]
-text_bytes = data[text_off:text_off + text_size]
+text_bytes = data[text_off:text_off + text_sec[4]]
 
 # ============================================================
-# Achar comeco da funcao que contem um endereco
-# Padrao MSVC: 55 8B EC (push ebp; mov ebp, esp)
+# A) RESOLVER NOMES DOS IAT SLOTS
 # ============================================================
-def find_function_start(va):
-    """Busca reversa pelo padrao push ebp; mov ebp, esp."""
-    off = va - text_va
-    prologue = bytes([0x55, 0x8B, 0xEC])  # push ebp; mov ebp, esp
-    prologue2 = bytes([0x55, 0x89, 0xE5])  # variant
-    # Buscar reversamente ate 2000 bytes
-    for i in range(off, max(0, off - 4000), -1):
-        if text_bytes[i:i+3] == prologue or text_bytes[i:i+3] == prologue2:
-            return text_va + i
-    return None
+print("="*80)
+print("A) RESOLVENDO NOMES DOS IAT SLOTS")
+print("="*80)
 
-def disasm_function(start_va, max_bytes=4000):
-    """Desmonta ate encontrar ret (C3) ou tamanho maximo."""
-    off = start_va - text_va
-    end_off = min(off + max_bytes, len(text_bytes))
-    code = text_bytes[off:end_off]
-    instrs = []
-    for ins in md.disasm(code, start_va):
-        instrs.append(ins)
-        if ins.mnemonic in ("ret", "retn") and len(instrs) > 5:
-            break
-    return instrs
+opt_hdr = e_lfanew + 24
+imp_rva = struct.unpack_from("<I", data, opt_hdr + 96 + 8)[0]
+imp_off = va_to_off(image_base + imp_rva)
+
+iat_names = {}  # VA -> (dll_name, func_name)
+i = 0
+while True:
+    entry_off = imp_off + i * 20
+    if entry_off + 20 > len(data): break
+    ilt_rva = struct.unpack_from("<I", data, entry_off)[0]
+    iat_rva = struct.unpack_from("<I", data, entry_off + 16)[0]
+    name_rva = struct.unpack_from("<I", data, entry_off + 12)[0]
+    if ilt_rva == 0 and name_rva == 0: break
+    dll_off = va_to_off(image_base + name_rva)
+    if not dll_off: i += 1; continue
+    dll_name = data[dll_off:data.index(b'\x00', dll_off)].decode('ascii', 'replace')
+
+    j = 0
+    while True:
+        ilt_e_off = va_to_off(image_base + ilt_rva) + j * 4
+        iat_e_va = image_base + iat_rva + j * 4
+        ilt_val = struct.unpack_from("<I", data, ilt_e_off)[0]
+        if ilt_val == 0: break
+        sym_rva = ilt_val & 0x7FFFFFFF
+        if sym_rva and not (ilt_val & 0x80000000):
+            sym_off = va_to_off(image_base + sym_rva) + 2
+            sym_name = data[sym_off:data.index(b'\x00', sym_off)].decode('ascii', 'replace')
+            iat_names[iat_e_va] = (dll_name, sym_name)
+        j += 1
+    i += 1
+
+print(f"\nIAT slots interessantes na funcao 0xA31750:\n")
+for va in IAT_INTERESTS:
+    if va in iat_names:
+        dll, sym = iat_names[va]
+        # Tentar demangle basico se comeca com ?
+        display = sym if not sym.startswith("?") else sym[:120]
+        print(f"  [0x{va:X}] {dll} :: {display}")
+    else:
+        print(f"  [0x{va:X}] (nao achado)")
 
 # ============================================================
-# Analisar cada call site
+# B) DESMONTAR FUNCAO INTERNA 0x401992
 # ============================================================
-for func_name, call_va in CALL_SITES.items():
-    print(f"\n{'='*80}")
-    print(f"# {func_name} @ 0x{call_va:08X}")
-    print('='*80)
+print("\n" + "="*80)
+print(f"B) FUNCAO INTERNA 0x{CALL_INTERNAL:X}")
+print("="*80)
 
-    start = find_function_start(call_va)
-    if not start:
-        print(f"  [!] Nao achou inicio da funcao — tentando 200 bytes antes")
-        start = call_va - 200
-    print(f"  Funcao comeca em: 0x{start:X}")
+off = CALL_INTERNAL - text_va
+code = text_bytes[off:off + 500]
+count = 0
+for ins in md.disasm(code, CALL_INTERNAL):
+    op_str = ins.op_str
+    # Resolver call target
+    if ins.mnemonic == "call":
+        m = re.search(r'\[0x([0-9a-fA-F]+)\]', op_str)
+        if m:
+            va = int(m.group(1), 16)
+            if va in iat_names:
+                op_str += f"  ; {iat_names[va][1][:60]}"
+    print(f"  0x{ins.address:08X}: {ins.mnemonic:<8} {op_str}")
+    count += 1
+    if ins.mnemonic in ("ret", "retn") or count > 60: break
 
-    instrs = disasm_function(start, max_bytes=6000)
-    print(f"  Instrucoes desmontadas: {len(instrs)}")
-    print()
+# ============================================================
+# C) DESMONTAR FUNCAO INTEIRA 0xA31750 (com nomes IAT resolvidos)
+# ============================================================
+print("\n" + "="*80)
+print(f"C) FUNCAO 0x{FUNC_START:X} — INTEIRA COM NOMES IAT")
+print("="*80)
 
-    # Coletar todas as strings referenciadas na funcao
-    strings_referenced = []
-    string_seen = set()
-    all_calls_indirect = {}  # addr -> count (funcoes chamadas)
+off = FUNC_START - text_va
+code = text_bytes[off:off + 8000]
+count = 0
+for ins in md.disasm(code, FUNC_START):
+    op_str = ins.op_str
+    note = ""
+    if ins.mnemonic == "call":
+        m = re.search(r'\[0x([0-9a-fA-F]+)\]', op_str)
+        if m:
+            va = int(m.group(1), 16)
+            if va in iat_names:
+                note = f"  ; {iat_names[va][1][:80]}"
+        # Tambem calls diretos
+        m2 = re.match(r'^0x([0-9a-fA-F]+)$', op_str)
+        if m2:
+            va = int(m2.group(1), 16)
+            note = f"  ; internal @ 0x{va:X}"
+    # push imm32 -> string
+    if ins.mnemonic == "push":
+        m = re.match(r'^(0x[0-9a-fA-F]+)$', op_str)
+        if m:
+            v = int(m.group(1), 16)
+            if v > image_base:
+                s = read_string_at_va(v)
+                if s: note = f"  ; '{s}'"
+    marker = " *** CALL Tea_Init ***" if ins.address == 0xA31B70 else ""
+    marker += " *** CALL Tea_Encrypt ***" if ins.address == 0xA31ECA else ""
+    print(f"  0x{ins.address:08X}: {ins.mnemonic:<8} {op_str}{note}{marker}")
+    count += 1
+    if ins.mnemonic in ("ret", "retn") and count > 200: break
+    if count > 900: break
 
-    for ins in instrs:
-        # push imm32 (68 XX XX XX XX)
-        if ins.mnemonic == "push":
-            m = re.match(r'^(0x[0-9a-fA-F]+|-?\d+)$', ins.op_str)
-            if m:
-                v = int(ins.op_str, 0) & 0xFFFFFFFF
-                if v > image_base:
-                    s = read_string_at_va(v)
-                    if s and s not in string_seen:
-                        string_seen.add(s)
-                        strings_referenced.append((ins.address, "push", v, s))
+# ============================================================
+# D) BUSCAR CALLERS DA FUNCAO 0xA31750
+# ============================================================
+print("\n" + "="*80)
+print(f"D) CALLERS DA FUNCAO 0x{FUNC_START:X}")
+print("="*80)
 
-        # lea r, [imm32]
-        elif ins.mnemonic == "lea":
-            m = re.search(r'0x([0-9a-fA-F]+)', ins.op_str)
-            if m:
-                v = int(m.group(1), 16)
-                if v > image_base:
-                    s = read_string_at_va(v)
-                    if s and s not in string_seen:
-                        string_seen.add(s)
-                        strings_referenced.append((ins.address, "lea", v, s))
+# Buscar E8 rel32 -> FUNC_START
+callers = []
+for i in range(0, len(text_bytes) - 5):
+    if text_bytes[i] == 0xE8:
+        rel = struct.unpack_from("<i", text_bytes, i + 1)[0]
+        target = text_va + i + 5 + rel
+        if target == FUNC_START:
+            callers.append(text_va + i)
 
-        # mov r, imm32 (b8-bf XX XX XX XX)
-        elif ins.mnemonic == "mov":
-            m = re.match(r'^(e[abcds][ipx]|e\wi), (0x[0-9a-fA-F]+)$', ins.op_str)
-            if m:
-                v = int(m.group(2), 16)
-                if v > image_base:
-                    s = read_string_at_va(v)
-                    if s and s not in string_seen:
-                        string_seen.add(s)
-                        strings_referenced.append((ins.address, "mov", v, s))
-
-        # call dword ptr [imm] (chamada indireta a IAT)
-        if ins.mnemonic == "call":
-            m = re.search(r'\[0x([0-9a-fA-F]+)\]', ins.op_str)
-            if m:
-                v = int(m.group(1), 16)
-                all_calls_indirect[v] = all_calls_indirect.get(v, 0) + 1
-
-    print(f"--- STRINGS ASCII REFERENCIADAS NA FUNCAO ({len(strings_referenced)}) ---")
-    for addr, opt, ptr, s in strings_referenced:
-        print(f"  0x{addr:08X}  {opt}  ptr=0x{ptr:X}  {s!r}")
-
-    print(f"\n--- CALLS INDIRETAS (IAT) — funcoes chamadas ({len(all_calls_indirect)}) ---")
-    for iat_va, cnt in sorted(all_calls_indirect.items(), key=lambda x: -x[1]):
-        print(f"  [0x{iat_va:X}] chamada {cnt}x")
-
-    # ============================================================
-    # DISASSEMBLY MARCADO — ao redor do call site (200 antes + 30 depois)
-    # ============================================================
-    print(f"\n--- DISASSEMBLY MARCADO (200 antes + 30 depois de 0x{call_va:X}) ---")
-    for ins in instrs:
-        if ins.address < call_va - 250: continue
-        if ins.address > call_va + 60: break
-        marker = " *** TARGET *** " if ins.address == call_va else "                "
-        # Anotar se essa instrucao referencia local var 0x80
+print(f"\nEncontrados {len(callers)} callers:\n")
+for idx, cva in enumerate(callers[:10]):
+    print(f"\n--- Caller #{idx+1} @ 0x{cva:X} ---")
+    # Desmontar 60 instrs antes
+    start_off = max(0, cva - text_va - 200)
+    code = text_bytes[start_off:cva - text_va + 6]
+    code_va = text_va + start_off
+    all_ins = list(md.disasm(code, code_va))
+    for ins in all_ins[-20:]:
+        op_str = ins.op_str
         note = ""
-        if f"ebp - 0x{LOCAL_VAR_STRING:x}" in ins.op_str.lower():
-            note = "  <-- ref [ebp-0x80] (std::string local)"
-        if any(s == ins.address for s, _, _, _ in strings_referenced):
-            entry = next(x for x in strings_referenced if x[0] == ins.address)
-            note = f"  <-- STRING: {entry[3]!r}"
-        print(f"  0x{ins.address:08X}: {marker}{ins.mnemonic:<8} {ins.op_str}{note}")
+        if ins.mnemonic == "push":
+            m = re.match(r'^(0x[0-9a-fA-F]+)$', op_str)
+            if m:
+                v = int(m.group(1), 16)
+                if v > image_base:
+                    s = read_string_at_va(v)
+                    if s: note = f"  ; '{s}'"
+        if ins.mnemonic == "call":
+            m = re.search(r'\[0x([0-9a-fA-F]+)\]', op_str)
+            if m:
+                va = int(m.group(1), 16)
+                if va in iat_names:
+                    note = f"  ; {iat_names[va][1][:60]}"
+        marker = "  >>>" if ins.address == cva else "     "
+        print(f"{marker} 0x{ins.address:08X}: {ins.mnemonic:<8} {op_str}{note}")
+
+# ============================================================
+# E) BUSCAR CANDIDATOS A CHAVE NO BINARIO
+# ============================================================
+print("\n" + "="*80)
+print("E) STRINGS COM PADRAO DE CHAVE NO BINARIO")
+print("="*80)
+
+# Buscar strings hex-like (16, 32, 64 chars) e base64-like
+patterns = {
+    "hex_16":  re.compile(rb'[0-9a-fA-F]{16}\x00'),
+    "hex_32":  re.compile(rb'[0-9a-fA-F]{32}\x00'),
+    "hex_64":  re.compile(rb'[0-9a-fA-F]{64}\x00'),
+    "base64":  re.compile(rb'[A-Za-z0-9+/]{16,64}={0,2}\x00'),
+    "printable_16":  re.compile(rb'[\x20-\x7E]{15,17}\x00'),  # 16 chars como chave TEA
+}
+
+for name, pat in patterns.items():
+    matches = set()
+    for m in pat.finditer(data):
+        s = m.group(0)[:-1]
+        # Filtros
+        if b'.' in s and b' ' in s: continue  # e uma frase
+        if s.startswith(b'0000') and s.endswith(b'0000'): continue
+        matches.add(s)
+    matches_sorted = sorted(matches)[:30]
+    if matches_sorted:
+        print(f"\n  {name} ({len(matches)} matches unicos, mostrando ate 30):")
+        for s in matches_sorted:
+            print(f"    {s!r}")
 
 print("\n" + "="*80)
-print("FIM DA ANALISE V4")
+print("FIM V5")
 print("="*80)
-print("""
-INTERPRETACAO:
-
-Se voce ver algo tipo:
-  0x00XXXXXX  push  ptr=0x00YYYYYY  'ALGUMA STRING'
-  0x00XXXXXY  lea   ecx, [ebp-0x80]         <-- ref [ebp-0x80]
-  0x00XXXXXZ  call  ... (basic_string::assign ou construtor)
-
-Entao ALGUMA STRING e o que vai entrar no std::string que sera passado
-pra Tea_Init. Essa e a chave real!
-
-Priorize strings suspeitas: 'Gudsen.88888888', 'Gudsen.888', hex-like,
-qualquer coisa que nao seja mensagem de log/erro.
-""")
 '@ | Set-Content -Path $scriptPath -Encoding UTF8
 
-Write-Host "`n=== RODANDO ANALISE V4 (funcao completa) ===`n" -ForegroundColor Cyan
+Write-Host "`n=== RODANDO V5 ===`n" -ForegroundColor Cyan
 python $scriptPath
 
 Stop-Transcript | Out-Null
-Write-Host "`n=== Log salvo em: $logPath ===" -ForegroundColor Green
+Write-Host "`n=== Log completo em: $logPath ===" -ForegroundColor Green

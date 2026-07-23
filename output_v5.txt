@@ -1,0 +1,1047 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20260723112446
+Username: PC\exoli
+RunAs User: PC\exoli
+Configuration Name: 
+Machine: PC (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File .\Engenharia.ps1
+Process ID: 3984
+PSVersion: 5.1.26100.8875
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.8875
+BuildVersion: 10.0.26100.8875
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+
+=== Log em: C:\Users\exoli\Desktop\moza-re\output_v5.txt ===
+
+=== RODANDO V5 ===
+================================================================================
+A) RESOLVENDO NOMES DOS IAT SLOTS
+================================================================================
+
+IAT slots interessantes na funcao 0xA31750:
+
+  [0xE9B148] Qt5Core.dll :: ??0QString@@QAE@XZ
+  [0xE9B14C] Qt5Core.dll :: ??0QString@@QAE@ABV0@@Z
+  [0xE9B2C0] Qt5Core.dll :: ?toStdString@QString@@QBE?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@XZ
+  [0xE9B150] Qt5Core.dll :: ??1QString@@QAE@XZ
+  [0xE9B12C] Qt5Core.dll :: ??0QMessageLogger@@QAE@PBDH0@Z
+  [0xE9B138] Qt5Core.dll :: ?warning@QMessageLogger@@QBE?AVQDebug@@XZ
+  [0xE9B420] Qt5Core.dll :: ??1QDebug@@QAE@XZ
+  [0xE9B380] Qt5Core.dll :: ??1QByteArray@@QAE@XZ
+  [0xE9B14C] Qt5Core.dll :: ??0QString@@QAE@ABV0@@Z
+
+================================================================================
+B) FUNCAO INTERNA 0x401992
+================================================================================
+  0x00401992: jmp      0x494d20
+  0x00401997: jmp      0xc49aa0
+  0x0040199C: jmp      0xa635a0
+  0x004019A1: jmp      0xa4ee70
+  0x004019A6: jmp      0x9d3b80
+  0x004019AB: jmp      0x90cc40
+  0x004019B0: jmp      0x8e4af0
+  0x004019B5: jmp      0x86c240
+  0x004019BA: jmp      0x83d010
+  0x004019BF: jmp      0x82c910
+  0x004019C4: jmp      0x64c6bf
+  0x004019C9: jmp      0x787e50
+  0x004019CE: jmp      0x5cd060
+  0x004019D3: jmp      0x52a1c0
+  0x004019D8: jmp      0x472640
+  0x004019DD: jmp      0xa395b0
+  0x004019E2: jmp      0x922ca0
+  0x004019E7: jmp      0x7fcc70
+  0x004019EC: jmp      0x7bf520
+  0x004019F1: jmp      0x7a4a00
+  0x004019F6: jmp      0x7a4da0
+  0x004019FB: jmp      0x64c1fb
+  0x00401A00: jmp      0x6591d0
+  0x00401A05: jmp      0x71eb70
+  0x00401A0A: jmp      0x727bc0
+  0x00401A0F: jmp      0x73d6c0
+  0x00401A14: jmp      0x514430
+  0x00401A19: jmp      0x4be400
+  0x00401A1E: jmp      0x47acc0
+  0x00401A23: jmp      0xabb6b0
+  0x00401A28: jmp      0x91bae0
+  0x00401A2D: jmp      0x9128c0
+  0x00401A32: jmp      0x8101d0
+  0x00401A37: jmp      0x708b60
+  0x00401A3C: jmp      0x71a9f0
+  0x00401A41: jmp      0x728f90
+  0x00401A46: jmp      0x52a440
+  0x00401A4B: jmp      0x520ba0
+  0x00401A50: jmp      0x4a0dd0
+  0x00401A55: jmp      0xab92c0
+  0x00401A5A: jmp      0xab0160
+  0x00401A5F: jmp      0xa6ba00
+  0x00401A64: jmp      0x91ece0
+  0x00401A69: jmp      0x8e84a0
+  0x00401A6E: jmp      0x8e06a0
+  0x00401A73: jmp      0x813690
+  0x00401A78: jmp      0x80caf0
+  0x00401A7D: jmp      0x7bad50
+  0x00401A82: jmp      0x623350
+  0x00401A87: jmp      0x762d40
+  0x00401A8C: jmp      0x77c690
+  0x00401A91: jmp      0x6a7510
+  0x00401A96: jmp      0x492b80
+  0x00401A9B: jmp      0x478f60
+  0x00401AA0: jmp      0xb07ba0
+  0x00401AA5: jmp      0xacd300
+  0x00401AAA: jmp      0xadc620
+  0x00401AAF: jmp      0x9ba5a0
+  0x00401AB4: jmp      0x8ec910
+  0x00401AB9: jmp      0x869750
+  0x00401ABE: jmp      0x84a800
+
+================================================================================
+C) FUNCAO 0xA31750 â€” INTEIRA COM NOMES IAT
+================================================================================
+  0x00A31750: push     ebp
+  0x00A31751: mov      ebp, esp
+  0x00A31753: push     -1
+  0x00A31755: push     0xc23a7c
+  0x00A3175A: mov      eax, dword ptr fs:[0]
+  0x00A31760: push     eax
+  0x00A31761: sub      esp, 0x11c
+  0x00A31767: mov      eax, dword ptr [0xe64e80]
+  0x00A3176C: xor      eax, ebp
+  0x00A3176E: mov      dword ptr [ebp - 0x10], eax
+  0x00A31771: push     esi
+  0x00A31772: push     edi
+  0x00A31773: push     eax
+  0x00A31774: lea      eax, [ebp - 0xc]
+  0x00A31777: mov      dword ptr fs:[0], eax
+  0x00A3177D: mov      ecx, dword ptr [ebp + 0x18]
+  0x00A31780: mov      eax, dword ptr [ebp + 0x1c]
+  0x00A31783: mov      edi, dword ptr [ebp + 8]
+  0x00A31786: mov      dword ptr [ebp - 0x68], 0
+  0x00A3178D: mov      dword ptr [ebp - 0x8c], eax
+  0x00A31793: mov      eax, dword ptr [ecx]
+  0x00A31795: mov      dword ptr [ebp - 0x5c], edi
+  0x00A31798: mov      dword ptr [ebp - 0x64], ecx
+  0x00A3179B: cmp      dword ptr [eax + 4], 0
+  0x00A3179F: jne      0xa317fe
+  0x00A317A1: mov      dword ptr [ebp - 0x34], 0xe63ed0
+  0x00A317A8: push     0
+  0x00A317AA: push     0
+  0x00A317AC: push     0
+  0x00A317AE: lea      ecx, [ebp - 0x24]
+  0x00A317B1: mov      dword ptr [ebp - 4], 0
+  0x00A317B8: call     dword ptr [0xe9b12c]  ; ??0QMessageLogger@@QAE@PBDH0@Z
+  0x00A317BE: lea      ecx, [ebp - 0x30]
+  0x00A317C1: push     ecx
+  0x00A317C2: mov      ecx, eax
+  0x00A317C4: call     dword ptr [0xe9b138]  ; ?warning@QMessageLogger@@QBE?AVQDebug@@XZ
+  0x00A317CA: mov      ecx, eax
+  0x00A317CC: mov      byte ptr [ebp - 4], 1
+  0x00A317D0: call     dword ptr [0xe9b41c]  ; ?noquote@QDebug@@QAEAAV1@XZ
+  0x00A317D6: lea      ecx, [ebp - 0x34]
+  0x00A317D9: push     ecx
+  0x00A317DA: mov      ecx, eax
+  0x00A317DC: call     dword ptr [0xe9b404]  ; ??6QDebug@@QAEAAV0@ABVQString@@@Z
+  0x00A317E2: lea      ecx, [ebp - 0x30]
+  0x00A317E5: call     dword ptr [0xe9b420]  ; ??1QDebug@@QAE@XZ
+  0x00A317EB: lea      ecx, [ebp - 0x34]
+  0x00A317EE: call     dword ptr [0xe9b150]  ; ??1QString@@QAE@XZ
+  0x00A317F4: mov      eax, 0x1b
+  0x00A317F9: jmp      0xa32352
+  0x00A317FE: mov      ecx, dword ptr [edi + 4]
+  0x00A31801: xor      dl, dl
+  0x00A31803: mov      byte ptr [ebp - 0x29], dl
+  0x00A31806: cmp      dword ptr [ecx + 0xc], 0
+  0x00A3180A: lea      eax, [ecx + 8]
+  0x00A3180D: je       0xa3193a
+  0x00A31813: mov      esi, dword ptr [ecx + 0x14]
+  0x00A31816: cmp      esi, eax
+  0x00A31818: je       0xa3193a
+  0x00A3181E: mov      ax, word ptr [esi + 0xc]
+  0x00A31822: lea      ecx, [esi + 0x10]
+  0x00A31825: add      ax, 0x40
+  0x00A31829: jne      0xa318c5
+  0x00A3182F: mov      eax, dword ptr [ecx]
+  0x00A31831: cmp      dword ptr [eax + 4], 0x40
+  0x00A31835: ja       0xa318c5
+  0x00A3183B: test     dl, dl
+  0x00A3183D: jne      0xa318dd
+  0x00A31843: call     dword ptr [0xe9a9d0]  ; ?data@QByteArray@@QBEPBDXZ
+  0x00A31849: cmp      dword ptr [edi], 0x10
+  0x00A3184C: movups   xmm0, xmmword ptr [eax]
+  0x00A3184F: movups   xmmword ptr [ebp - 0xc4], xmm0
+  0x00A31856: movups   xmm0, xmmword ptr [eax + 0x10]
+  0x00A3185A: movups   xmmword ptr [ebp - 0xb4], xmm0
+  0x00A31861: movq     xmm0, qword ptr [eax + 0x20]
+  0x00A31866: mov      eax, dword ptr [eax + 0x28]
+  0x00A31869: mov      dword ptr [ebp - 0x9c], eax
+  0x00A3186F: mov      al, 1
+  0x00A31871: movq     qword ptr [ebp - 0xa4], xmm0
+  0x00A31879: mov      byte ptr [ebp - 0x29], al
+  0x00A3187C: mov      byte ptr [ebp - 0x98], al
+  0x00A31882: jne      0xa318c5
+  0x00A31884: push     dword ptr [ebp - 0xc4]
+  0x00A3188A: call     0x41b7c0  ; internal @ 0x41B7C0
+  0x00A3188F: add      esp, 4
+  0x00A31892: mov      dword ptr [ebp - 0xc4], eax
+  0x00A31898: lea      edi, [ebp - 0xc0]
+  0x00A3189E: nop
+  0x00A318A0: push     dword ptr [edi]
+  0x00A318A2: call     0x41b7c0  ; internal @ 0x41B7C0
+  0x00A318A7: mov      dword ptr [edi], eax
+  0x00A318A9: add      esp, 4
+  0x00A318AC: add      edi, 4
+  0x00A318AF: lea      eax, [ebp - 0x98]
+  0x00A318B5: cmp      edi, eax
+  0x00A318B7: jne      0xa318a0
+  0x00A318B9: mov      al, byte ptr [ebp - 0x98]
+  0x00A318BF: mov      edi, dword ptr [ebp - 0x5c]
+  0x00A318C2: mov      byte ptr [ebp - 0x29], al
+  0x00A318C5: mov      ecx, esi
+  0x00A318C7: call     dword ptr [0xe9b1c0]  ; ?nextNode@QMapNodeBase@@QBEPBU1@XZ
+  0x00A318CD: mov      ecx, dword ptr [edi + 4]
+  0x00A318D0: mov      esi, eax
+  0x00A318D2: mov      dl, byte ptr [ebp - 0x29]
+  0x00A318D5: lea      eax, [ecx + 8]
+  0x00A318D8: jmp      0xa31816
+  0x00A318DD: mov      dword ptr [ebp - 0x34], 0xe63efc
+  0x00A318E4: push     0
+  0x00A318E6: push     0
+  0x00A318E8: push     0
+  0x00A318EA: lea      ecx, [ebp - 0x24]
+  0x00A318ED: mov      dword ptr [ebp - 4], 2
+  0x00A318F4: call     dword ptr [0xe9b12c]  ; ??0QMessageLogger@@QAE@PBDH0@Z
+  0x00A318FA: lea      ecx, [ebp - 0x30]
+  0x00A318FD: push     ecx
+  0x00A318FE: mov      ecx, eax
+  0x00A31900: call     dword ptr [0xe9b138]  ; ?warning@QMessageLogger@@QBE?AVQDebug@@XZ
+  0x00A31906: mov      ecx, eax
+  0x00A31908: mov      byte ptr [ebp - 4], 3
+  0x00A3190C: call     dword ptr [0xe9b41c]  ; ?noquote@QDebug@@QAEAAV1@XZ
+  0x00A31912: lea      ecx, [ebp - 0x34]
+  0x00A31915: push     ecx
+  0x00A31916: mov      ecx, eax
+  0x00A31918: call     dword ptr [0xe9b404]  ; ??6QDebug@@QAEAAV0@ABVQString@@@Z
+  0x00A3191E: lea      ecx, [ebp - 0x30]
+  0x00A31921: call     dword ptr [0xe9b420]  ; ??1QDebug@@QAE@XZ
+  0x00A31927: lea      ecx, [ebp - 0x34]
+  0x00A3192A: call     dword ptr [0xe9b150]  ; ??1QString@@QAE@XZ
+  0x00A31930: mov      eax, 0xb
+  0x00A31935: jmp      0xa32352
+  0x00A3193A: test     dl, dl
+  0x00A3193C: jne      0xa31a53
+  0x00A31942: cmp      dword ptr [ecx + 4], 0
+  0x00A31946: je       0xa319f6
+  0x00A3194C: mov      esi, dword ptr [0xe9aab8]
+  0x00A31952: add      ecx, 8
+  0x00A31955: call     esi
+  0x00A31957: mov      eax, dword ptr [eax + 0x10]
+  0x00A3195A: cmp      dword ptr [eax + 4], 0x40
+  0x00A3195E: ja       0xa319f6
+  0x00A31964: mov      ecx, dword ptr [edi + 4]
+  0x00A31967: add      ecx, 8
+  0x00A3196A: call     esi
+  0x00A3196C: lea      ecx, [eax + 0x10]
+  0x00A3196F: call     dword ptr [0xe9a9d0]  ; ?data@QByteArray@@QBEPBDXZ
+  0x00A31975: cmp      dword ptr [edi], 0x10
+  0x00A31978: movups   xmm0, xmmword ptr [eax]
+  0x00A3197B: movups   xmmword ptr [ebp - 0xc4], xmm0
+  0x00A31982: movups   xmm0, xmmword ptr [eax + 0x10]
+  0x00A31986: movups   xmmword ptr [ebp - 0xb4], xmm0
+  0x00A3198D: movq     xmm0, qword ptr [eax + 0x20]
+  0x00A31992: mov      eax, dword ptr [eax + 0x28]
+  0x00A31995: mov      dword ptr [ebp - 0x9c], eax
+  0x00A3199B: mov      al, 1
+  0x00A3199D: movq     qword ptr [ebp - 0xa4], xmm0
+  0x00A319A5: mov      byte ptr [ebp - 0x29], al
+  0x00A319A8: mov      byte ptr [ebp - 0x98], al
+  0x00A319AE: jne      0xa31a53
+  0x00A319B4: push     dword ptr [ebp - 0xc4]
+  0x00A319BA: call     0x41b7c0  ; internal @ 0x41B7C0
+  0x00A319BF: add      esp, 4
+  0x00A319C2: mov      dword ptr [ebp - 0xc4], eax
+  0x00A319C8: lea      esi, [ebp - 0xc0]
+  0x00A319CE: nop
+  0x00A319D0: push     dword ptr [esi]
+  0x00A319D2: call     0x41b7c0  ; internal @ 0x41B7C0
+  0x00A319D7: mov      dword ptr [esi], eax
+  0x00A319D9: add      esp, 4
+  0x00A319DC: add      esi, 4
+  0x00A319DF: lea      eax, [ebp - 0x98]
+  0x00A319E5: cmp      esi, eax
+  0x00A319E7: jne      0xa319d0
+  0x00A319E9: mov      al, byte ptr [ebp - 0x98]
+  0x00A319EF: mov      byte ptr [ebp - 0x29], al
+  0x00A319F2: test     al, al
+  0x00A319F4: jne      0xa31a53
+  0x00A319F6: mov      dword ptr [ebp - 0x34], 0xe63f38
+  0x00A319FD: push     0
+  0x00A319FF: push     0
+  0x00A31A01: push     0
+  0x00A31A03: lea      ecx, [ebp - 0x24]
+  0x00A31A06: mov      dword ptr [ebp - 4], 4
+  0x00A31A0D: call     dword ptr [0xe9b12c]  ; ??0QMessageLogger@@QAE@PBDH0@Z
+  0x00A31A13: lea      ecx, [ebp - 0x30]
+  0x00A31A16: push     ecx
+  0x00A31A17: mov      ecx, eax
+  0x00A31A19: call     dword ptr [0xe9b138]  ; ?warning@QMessageLogger@@QBE?AVQDebug@@XZ
+  0x00A31A1F: mov      ecx, eax
+  0x00A31A21: mov      byte ptr [ebp - 4], 5
+  0x00A31A25: call     dword ptr [0xe9b41c]  ; ?noquote@QDebug@@QAEAAV1@XZ
+  0x00A31A2B: lea      ecx, [ebp - 0x34]
+  0x00A31A2E: push     ecx
+  0x00A31A2F: mov      ecx, eax
+  0x00A31A31: call     dword ptr [0xe9b404]  ; ??6QDebug@@QAEAAV0@ABVQString@@@Z
+  0x00A31A37: lea      ecx, [ebp - 0x30]
+  0x00A31A3A: call     dword ptr [0xe9b420]  ; ??1QDebug@@QAE@XZ
+  0x00A31A40: lea      ecx, [ebp - 0x34]
+  0x00A31A43: call     dword ptr [0xe9b150]  ; ??1QString@@QAE@XZ
+  0x00A31A49: mov      eax, 0xc
+  0x00A31A4E: jmp      0xa32352
+  0x00A31A53: mov      eax, dword ptr [0xe9b398]
+  0x00A31A58: mov      dword ptr [ebp - 0x38], eax
+  0x00A31A5B: lea      eax, [ebp - 0x50]
+  0x00A31A5E: mov      dword ptr [ebp - 4], 6
+  0x00A31A65: push     eax
+  0x00A31A66: lea      ecx, [ebp - 0x30]
+  0x00A31A69: mov      dword ptr [ebp - 0x30], edi
+  0x00A31A6C: call     0xa309e0  ; internal @ 0xA309E0
+  0x00A31A71: mov      byte ptr [ebp - 4], 7
+  0x00A31A75: call     0xa329d0  ; internal @ 0xA329D0
+  0x00A31A7A: mov      dword ptr [ebp - 0x30], eax
+  0x00A31A7D: mov      esi, dword ptr [eax + 4]
+  0x00A31A80: test     esi, esi
+  0x00A31A82: je       0xa31ac8
+  0x00A31A84: push     0
+  0x00A31A86: push     0
+  0x00A31A88: push     0
+  0x00A31A8A: lea      ecx, [ebp - 0x24]
+  0x00A31A8D: call     dword ptr [0xe9b12c]  ; ??0QMessageLogger@@QAE@PBDH0@Z
+  0x00A31A93: lea      ecx, [ebp - 0x6c]
+  0x00A31A96: push     ecx
+  0x00A31A97: mov      ecx, eax
+  0x00A31A99: call     dword ptr [0xe9b138]  ; ?warning@QMessageLogger@@QBE?AVQDebug@@XZ
+  0x00A31A9F: mov      ecx, eax
+  0x00A31AA1: mov      byte ptr [ebp - 4], 8
+  0x00A31AA5: call     dword ptr [0xe9b41c]  ; ?noquote@QDebug@@QAEAAV1@XZ
+  0x00A31AAB: mov      ecx, dword ptr [ebp - 0x30]
+  0x00A31AAE: add      ecx, 8
+  0x00A31AB1: push     ecx
+  0x00A31AB2: mov      ecx, eax
+  0x00A31AB4: call     dword ptr [0xe9b404]  ; ??6QDebug@@QAEAAV0@ABVQString@@@Z
+  0x00A31ABA: lea      ecx, [ebp - 0x6c]
+  0x00A31ABD: call     dword ptr [0xe9b420]  ; ??1QDebug@@QAE@XZ
+  0x00A31AC3: jmp      0xa32340
+  0x00A31AC8: lea      esi, [eax + 0xc]
+  0x00A31ACB: xor      ecx, ecx
+  0x00A31ACD: mov      eax, dword ptr [esi]
+  0x00A31ACF: cmp      dword ptr [eax + 0x18], ecx
+  0x00A31AD2: je       0xa31ae5
+  0x00A31AD4: push     dword ptr [eax + 0x1c]
+  0x00A31AD7: push     dword ptr [ebp - 0x64]
+  0x00A31ADA: call     dword ptr [0xe9b1f8]  ; ?qHash@@YAIABVQString@@I@Z
+  0x00A31AE0: add      esp, 8
+  0x00A31AE3: mov      ecx, eax
+  0x00A31AE5: push     ecx
+  0x00A31AE6: push     dword ptr [ebp - 0x64]
+  0x00A31AE9: mov      ecx, esi
+  0x00A31AEB: call     0x401992  ; internal @ 0x401992
+  0x00A31AF0: mov      eax, dword ptr [eax]
+  0x00A31AF2: cmp      eax, dword ptr [esi]
+  0x00A31AF4: je       0xa31b09
+  0x00A31AF6: lea      ecx, [ebp - 0xcc]
+  0x00A31AFC: call     dword ptr [0xe9b148]  ; ??0QString@@QAE@XZ
+  0x00A31B02: mov      ecx, 1
+  0x00A31B07: jmp      0xa31b1d
+  0x00A31B09: push     dword ptr [ebp - 0x64]
+  0x00A31B0C: lea      ecx, [ebp - 0xc8]
+  0x00A31B12: call     dword ptr [0xe9b14c]  ; ??0QString@@QAE@ABV0@@Z
+  0x00A31B18: mov      ecx, 2
+  0x00A31B1D: mov      dword ptr [ebp - 0x3c], ecx
+  0x00A31B20: lea      ecx, [ebp - 0x80]
+  0x00A31B23: push     eax
+  0x00A31B24: call     dword ptr [0xe9b14c]  ; ??0QString@@QAE@ABV0@@Z
+  0x00A31B2A: mov      eax, dword ptr [ebp - 0x3c]
+  0x00A31B2D: mov      byte ptr [ebp - 4], 9
+  0x00A31B31: test     al, 2
+  0x00A31B33: je       0xa31b4a
+  0x00A31B35: and      eax, 0xfffffffd
+  0x00A31B38: lea      ecx, [ebp - 0xc8]
+  0x00A31B3E: mov      dword ptr [ebp - 0x3c], eax
+  0x00A31B41: call     dword ptr [0xe9b150]  ; ??1QString@@QAE@XZ
+  0x00A31B47: mov      eax, dword ptr [ebp - 0x3c]
+  0x00A31B4A: test     al, 1
+  0x00A31B4C: je       0xa31b5a
+  0x00A31B4E: lea      ecx, [ebp - 0xcc]
+  0x00A31B54: call     dword ptr [0xe9b150]  ; ??1QString@@QAE@XZ
+  0x00A31B5A: lea      eax, [ebp - 0x28]
+  0x00A31B5D: push     eax
+  0x00A31B5E: lea      ecx, [ebp - 0x80]
+  0x00A31B61: call     dword ptr [0xe9b2c0]  ; ?toStdString@QString@@QBE?AV?$basic_string@DU?$char_traits@D@std@@V?$allo
+cator@D
+  0x00A31B67: cmp      dword ptr [eax + 0x14], 0xf
+  0x00A31B6B: jbe      0xa31b6f
+  0x00A31B6D: mov      eax, dword ptr [eax]
+  0x00A31B6F: push     eax
+  0x00A31B70: call     0xa34b04  ; internal @ 0xA34B04 *** CALL Tea_Init ***
+  0x00A31B75: mov      ecx, dword ptr [ebp - 0x14]
+  0x00A31B78: add      esp, 4
+  0x00A31B7B: cmp      ecx, 0xf
+  0x00A31B7E: jbe      0xa31bb8
+  0x00A31B80: mov      edx, dword ptr [ebp - 0x28]
+  0x00A31B83: inc      ecx
+  0x00A31B84: mov      eax, edx
+  0x00A31B86: cmp      ecx, 0x1000
+  0x00A31B8C: jb       0xa31bae
+  0x00A31B8E: mov      edx, dword ptr [eax - 4]
+  0x00A31B91: add      ecx, 0x23
+  0x00A31B94: sub      eax, edx
+  0x00A31B96: add      eax, -4
+  0x00A31B99: cmp      eax, 0x1f
+  0x00A31B9C: jbe      0xa31bae
+  0x00A31B9E: push     0
+  0x00A31BA0: push     0
+  0x00A31BA2: push     0
+  0x00A31BA4: push     0
+  0x00A31BA6: push     0
+  0x00A31BA8: call     dword ptr [0xe9bd74]  ; _invoke_watson
+  0x00A31BAE: push     ecx
+  0x00A31BAF: push     edx
+  0x00A31BB0: call     0x408e40  ; internal @ 0x408E40
+  0x00A31BB5: add      esp, 8
+  0x00A31BB8: push     0
+  0x00A31BBA: push     0
+  0x00A31BBC: push     0
+  0x00A31BBE: lea      ecx, [ebp - 0x24]
+  0x00A31BC1: call     dword ptr [0xe9b12c]  ; ??0QMessageLogger@@QAE@PBDH0@Z
+  0x00A31BC7: lea      ecx, [ebp - 0x30]
+  0x00A31BCA: push     ecx
+  0x00A31BCB: mov      ecx, eax
+  0x00A31BCD: call     dword ptr [0xe9b390]  ; ?info@QMessageLogger@@QBE?AVQDebug@@XZ
+  0x00A31BD3: push     0xcf5914  ; 'Tea_Init key: '
+  0x00A31BD8: mov      ecx, eax
+  0x00A31BDA: mov      byte ptr [ebp - 4], 0xa
+  0x00A31BDE: call     dword ptr [0xe9b408]  ; ??6QDebug@@QAEAAV0@PBD@Z
+  0x00A31BE4: lea      ecx, [ebp - 0x80]
+  0x00A31BE7: push     ecx
+  0x00A31BE8: mov      ecx, eax
+  0x00A31BEA: call     dword ptr [0xe9b404]  ; ??6QDebug@@QAEAAV0@ABVQString@@@Z
+  0x00A31BF0: lea      ecx, [ebp - 0x30]
+  0x00A31BF3: mov      byte ptr [ebp - 4], 9
+  0x00A31BF7: call     dword ptr [0xe9b420]  ; ??1QDebug@@QAE@XZ
+  0x00A31BFD: lea      ecx, [ebp - 0x50]
+  0x00A31C00: mov      dword ptr [ebp - 0x30], 0
+  0x00A31C07: mov      byte ptr [ebp - 0x90], 0
+  0x00A31C0E: call     0x417990  ; internal @ 0x417990
+  0x00A31C13: mov      eax, dword ptr [ebp - 0x50]
+  0x00A31C16: cmp      dword ptr [eax + 0xc], 0
+  0x00A31C1A: je       0xa31c21
+  0x00A31C1C: mov      esi, dword ptr [eax + 0x14]
+  0x00A31C1F: jmp      0xa31c24
+  0x00A31C21: lea      esi, [eax + 8]
+  0x00A31C24: lea      ecx, [ebp - 0x50]
+  0x00A31C27: call     0x417990  ; internal @ 0x417990
+  0x00A31C2C: mov      eax, dword ptr [ebp - 0x50]
+  0x00A31C2F: add      eax, 8
+  0x00A31C32: cmp      esi, eax
+  0x00A31C34: je       0xa32165
+  0x00A31C3A: mov      ecx, dword ptr [ebp - 0x94]
+  0x00A31C40: mov      dword ptr [ebp - 0x34], ecx
+  0x00A31C43: cmp      byte ptr [ebp - 0x90], 0
+  0x00A31C4A: mov      eax, dword ptr [esi + 0xc]
+  0x00A31C4D: mov      dword ptr [ebp - 0x7c], eax
+  0x00A31C50: je       0xa31c56
+  0x00A31C52: cmp      eax, ecx
+  0x00A31C54: jae      0xa31c6c
+  0x00A31C56: mov      byte ptr [ebp - 0x124], 1
+  0x00A31C5D: mov      dword ptr [ebp - 0x34], eax
+  0x00A31C60: mov      eax, dword ptr [ebp - 0x124]
+  0x00A31C66: mov      dword ptr [ebp - 0x90], eax
+  0x00A31C6C: lea      eax, [esi + 0x10]
+  0x00A31C6F: push     eax
+  0x00A31C70: lea      ecx, [ebp - 0x60]
+  0x00A31C73: call     dword ptr [0xe9b228]  ; ??0QByteArray@@QAE@ABV0@@Z
+  0x00A31C79: lea      ecx, [ebp - 0x60]
+  0x00A31C7C: mov      byte ptr [ebp - 4], 0xb
+  0x00A31C80: call     dword ptr [0xe9a9fc]  ; ?data@QByteArray@@QAEPADXZ
+  0x00A31C86: mov      ecx, dword ptr [ebp - 0x60]
+  0x00A31C89: mov      edx, dword ptr [ebp + 0xc]
+  0x00A31C8C: mov      dword ptr [ebp - 0x3c], eax
+  0x00A31C8F: mov      ecx, dword ptr [ecx + 4]
+  0x00A31C92: add      eax, ecx
+  0x00A31C94: cmp      ecx, edx
+  0x00A31C96: mov      dword ptr [ebp - 0x58], eax
+  0x00A31C99: cmovl    edx, ecx
+  0x00A31C9C: mov      dword ptr [ebp - 0x4c], edx
+  0x00A31C9F: test     edx, edx
+  0x00A31CA1: je       0xa3201a
+  0x00A31CA7: mov      ecx, edx
+  0x00A31CA9: mov      eax, edx
+  0x00A31CAB: nop      dword ptr [eax + eax]
+  0x00A31CB0: cmp      byte ptr [ebp + 0x14], 1
+  0x00A31CB4: jne      0xa31cc3
+  0x00A31CB6: mov      eax, ecx
+  0x00A31CB8: cmp      dl, 0x7e
+  0x00A31CBB: jne      0xa31cc3
+  0x00A31CBD: lea      eax, [edx - 2]
+  0x00A31CC0: mov      dword ptr [ebp - 0x4c], eax
+  0x00A31CC3: mov      ecx, dword ptr [edi]
+  0x00A31CC5: cmp      ecx, 8
+  0x00A31CC8: je       0xa31d83
+  0x00A31CCE: cmp      ecx, 0x10
+  0x00A31CD1: je       0xa31d21
+  0x00A31CD3: lea      ecx, [ebp - 0xd4]
+  0x00A31CD9: call     dword ptr [0xe9b388]  ; ??0QByteArray@@QAE@XZ
+  0x00A31CDF: lea      ecx, [ebp - 0xd0]
+  0x00A31CE5: mov      edi, eax
+  0x00A31CE7: call     dword ptr [0xe9b388]  ; ??0QByteArray@@QAE@XZ
+  0x00A31CED: push     eax
+  0x00A31CEE: lea      ecx, [ebp - 0x48]
+  0x00A31CF1: call     dword ptr [0xe9aad0]  ; ??0QByteArray@@QAE@$$QAV0@@Z
+  0x00A31CF7: push     edi
+  0x00A31CF8: lea      ecx, [ebp - 0x44]
+  0x00A31CFB: call     dword ptr [0xe9aad0]  ; ??0QByteArray@@QAE@$$QAV0@@Z
+  0x00A31D01: lea      ecx, [ebp - 0xd0]
+  0x00A31D07: call     dword ptr [0xe9b380]  ; ??1QByteArray@@QAE@XZ
+  0x00A31D0D: lea      ecx, [ebp - 0xd4]
+  0x00A31D13: call     dword ptr [0xe9b380]  ; ??1QByteArray@@QAE@XZ
+  0x00A31D19: mov      edi, dword ptr [ebp - 0x5c]
+  0x00A31D1C: jmp      0xa31e02
+  0x00A31D21: lea      eax, [ebp - 0x4c]
+  0x00A31D24: mov      dword ptr [ebp - 0x11c], eax
+  0x00A31D2A: lea      ecx, [ebp - 0x11c]
+  0x00A31D30: lea      eax, [ebp - 0x3c]
+  0x00A31D33: mov      dword ptr [ebp - 0x118], eax
+  0x00A31D39: lea      eax, [ebp - 0x74]
+  0x00A31D3C: push     eax
+  0x00A31D3D: call     0xa308a0  ; internal @ 0xA308A0
+  0x00A31D42: lea      eax, [ebp - 0x74]
+  0x00A31D45: push     eax
+  0x00A31D46: lea      eax, [ebp - 0x88]
+  0x00A31D4C: push     eax
+  0x00A31D4D: lea      ecx, [ebp - 0x6d]
+  0x00A31D50: call     0x403da5  ; internal @ 0x403DA5
+  0x00A31D55: lea      eax, [ebp - 0x74]
+  0x00A31D58: push     eax
+  0x00A31D59: lea      ecx, [ebp - 0x48]
+  0x00A31D5C: call     dword ptr [0xe9b228]  ; ??0QByteArray@@QAE@ABV0@@Z
+  0x00A31D62: lea      eax, [ebp - 0x88]
+  0x00A31D68: push     eax
+  0x00A31D69: lea      ecx, [ebp - 0x44]
+  0x00A31D6C: call     dword ptr [0xe9b228]  ; ??0QByteArray@@QAE@ABV0@@Z
+  0x00A31D72: lea      ecx, [ebp - 0x88]
+  0x00A31D78: call     dword ptr [0xe9b380]  ; ??1QByteArray@@QAE@XZ
+  0x00A31D7E: lea      ecx, [ebp - 0x74]
+  0x00A31D81: jmp      0xa31dfc
+  0x00A31D83: push     eax
+  0x00A31D84: push     dword ptr [ebp - 0x3c]
+  0x00A31D87: lea      ecx, [ebp - 0x78]
+  0x00A31D8A: call     dword ptr [0xe9b384]  ; ??0QByteArray@@QAE@PBDH@Z
+  0x00A31D90: push     0
+  0x00A31D92: lea      ecx, [ebp - 0x40]
+  0x00A31D95: mov      byte ptr [ebp - 4], 0xc
+  0x00A31D99: mov      dword ptr [ebp - 0x40], 0
+  0x00A31DA0: call     dword ptr [0xe9af70]  ; ??0QCryptographicHash@@QAE@W4Algorithm@0@@Z
+  0x00A31DA6: lea      ecx, [ebp - 0x40]
+  0x00A31DA9: mov      byte ptr [ebp - 4], 0xd
+  0x00A31DAD: call     dword ptr [0xe9af78]  ; ?reset@QCryptographicHash@@QAEXXZ
+  0x00A31DB3: lea      eax, [ebp - 0x78]
+  0x00A31DB6: push     eax
+  0x00A31DB7: lea      ecx, [ebp - 0x40]
+  0x00A31DBA: call     dword ptr [0xe9af7c]  ; ?addData@QCryptographicHash@@QAEXABVQByteArray@@@Z
+  0x00A31DC0: lea      eax, [ebp - 0x6c]
+  0x00A31DC3: push     eax
+  0x00A31DC4: lea      ecx, [ebp - 0x40]
+  0x00A31DC7: call     dword ptr [0xe9af80]  ; ?result@QCryptographicHash@@QBE?AVQByteArray@@XZ
+  0x00A31DCD: lea      ecx, [ebp - 0x40]
+  0x00A31DD0: call     dword ptr [0xe9af74]  ; ??1QCryptographicHash@@QAE@XZ
+  0x00A31DD6: lea      eax, [ebp - 0x78]
+  0x00A31DD9: push     eax
+  0x00A31DDA: lea      ecx, [ebp - 0x48]
+  0x00A31DDD: call     dword ptr [0xe9b228]  ; ??0QByteArray@@QAE@ABV0@@Z
+  0x00A31DE3: lea      eax, [ebp - 0x6c]
+  0x00A31DE6: push     eax
+  0x00A31DE7: lea      ecx, [ebp - 0x44]
+  0x00A31DEA: call     dword ptr [0xe9b228]  ; ??0QByteArray@@QAE@ABV0@@Z
+  0x00A31DF0: lea      ecx, [ebp - 0x6c]
+  0x00A31DF3: call     dword ptr [0xe9b380]  ; ??1QByteArray@@QAE@XZ
+  0x00A31DF9: lea      ecx, [ebp - 0x78]
+  0x00A31DFC: call     dword ptr [0xe9b380]  ; ??1QByteArray@@QAE@XZ
+  0x00A31E02: mov      eax, dword ptr [ebp - 0x48]
+  0x00A31E05: mov      byte ptr [ebp - 4], 0xe
+  0x00A31E09: cmp      dword ptr [eax + 4], 0
+  0x00A31E0D: jne      0xa31e28
+  0x00A31E0F: mov      eax, dword ptr [ebp - 0x44]
+  0x00A31E12: cmp      dword ptr [eax + 4], 0
+  0x00A31E16: jne      0xa31e28
+  0x00A31E18: mov      edi, dword ptr [edi]
+  0x00A31E1A: cmp      edi, 8
+  0x00A31E1D: je       0xa31e28
+  0x00A31E1F: cmp      edi, 0x10
+  0x00A31E22: jne      0xa3204f
+  0x00A31E28: mov      eax, dword ptr [ebp + 0x10]
+  0x00A31E2B: mov      dword ptr [ebp - 0x68], 0
+  0x00A31E32: sub      eax, 1
+  0x00A31E35: je       0xa31eab
+  0x00A31E37: sub      eax, 1
+  0x00A31E3A: jne      0xa320eb
+  0x00A31E40: call     0x438532  ; internal @ 0x438532
+  0x00A31E45: lea      ecx, [ebp - 0x54]
+  0x00A31E48: mov      edi, eax
+  0x00A31E4A: call     dword ptr [0xe9b388]  ; ??0QByteArray@@QAE@XZ
+  0x00A31E50: lea      eax, [ebp - 0x54]
+  0x00A31E53: mov      byte ptr [ebp - 4], 0x12
+  0x00A31E57: push     eax
+  0x00A31E58: lea      eax, [ebp - 0x48]
+  0x00A31E5B: mov      ecx, edi
+  0x00A31E5D: push     eax
+  0x00A31E5E: call     0x429d1b  ; internal @ 0x429D1B
+  0x00A31E63: test     eax, eax
+  0x00A31E65: jne      0xa320da
+  0x00A31E6B: mov      eax, dword ptr [ebp - 0x54]
+  0x00A31E6E: mov      edi, dword ptr [eax + 4]
+  0x00A31E71: mov      eax, dword ptr [ebp - 0x4c]
+  0x00A31E74: mov      dword ptr [ebp - 0x40], edi
+  0x00A31E77: cmp      edi, eax
+  0x00A31E79: jge      0xa31e97
+  0x00A31E7B: lea      eax, [ebp - 0x54]
+  0x00A31E7E: push     eax
+  0x00A31E7F: lea      ecx, [ebp - 0x48]
+  0x00A31E82: call     dword ptr [0xe9b0d4]  ; ??4QByteArray@@QAEAAV0@ABV0@@Z
+  0x00A31E88: lea      ecx, [ebp - 0x54]
+  0x00A31E8B: mov      byte ptr [ebp - 4], 0xe
+  0x00A31E8F: call     dword ptr [0xe9b380]  ; ??1QByteArray@@QAE@XZ
+  0x00A31E95: jmp      0xa31eb1
+  0x00A31E97: lea      ecx, [ebp - 0x54]
+  0x00A31E9A: mov      dword ptr [ebp - 0x40], eax
+  0x00A31E9D: mov      edi, eax
+  0x00A31E9F: mov      byte ptr [ebp - 4], 0xe
+  0x00A31EA3: call     dword ptr [0xe9b380]  ; ??1QByteArray@@QAE@XZ
+  0x00A31EA9: jmp      0xa31eb1
+  0x00A31EAB: mov      edi, dword ptr [ebp - 0x4c]
+  0x00A31EAE: mov      dword ptr [ebp - 0x40], edi
+  0x00A31EB1: test     edi, edi
+  0x00A31EB3: js       0xa320f2
+  0x00A31EB9: mov      eax, dword ptr [ebp - 0x48]
+  0x00A31EBC: lea      ecx, [ebp - 0x48]
+  0x00A31EBF: mov      edi, dword ptr [eax + 4]
+  0x00A31EC2: call     dword ptr [0xe9a9fc]  ; ?data@QByteArray@@QAEPADXZ
+  0x00A31EC8: push     edi
+  0x00A31EC9: push     eax
+  0x00A31ECA: call     0xa34afe  ; internal @ 0xA34AFE *** CALL Tea_Encrypt ***
+  0x00A31ECF: add      esp, 8
+  0x00A31ED2: lea      ecx, [ebp - 0x24]
+  0x00A31ED5: push     0
+  0x00A31ED7: push     0
+  0x00A31ED9: push     0
+  0x00A31EDB: call     dword ptr [0xe9b12c]  ; ??0QMessageLogger@@QAE@PBDH0@Z
+  0x00A31EE1: lea      ecx, [ebp - 0x84]
+  0x00A31EE7: push     ecx
+  0x00A31EE8: mov      ecx, eax
+  0x00A31EEA: call     dword ptr [0xe9b390]  ; ?info@QMessageLogger@@QBE?AVQDebug@@XZ
+  0x00A31EF0: push     0xcf5928  ; 'sectionIndex: '
+  0x00A31EF5: mov      ecx, eax
+  0x00A31EF7: mov      byte ptr [ebp - 4], 0x15
+  0x00A31EFB: call     dword ptr [0xe9b408]  ; ??6QDebug@@QAEAAV0@PBD@Z
+  0x00A31F01: mov      edi, dword ptr [ebp - 0x30]
+  0x00A31F04: mov      ecx, eax
+  0x00A31F06: push     edi
+  0x00A31F07: call     dword ptr [0xe9b414]  ; ??6QDebug@@QAEAAV0@H@Z
+  0x00A31F0D: inc      edi
+  0x00A31F0E: mov      ecx, eax
+  0x00A31F10: push     0xcf593c  ; ' sectionVerify-md4-hex :'
+  0x00A31F15: mov      dword ptr [ebp - 0x30], edi
+  0x00A31F18: call     dword ptr [0xe9b408]  ; ??6QDebug@@QAEAAV0@PBD@Z
+  0x00A31F1E: mov      edi, eax
+  0x00A31F20: lea      ecx, [ebp - 0x44]
+  0x00A31F23: push     0x20
+  0x00A31F25: lea      eax, [ebp - 0xd8]
+  0x00A31F2B: push     eax
+  0x00A31F2C: call     dword ptr [0xe9ab50]  ; ?toHex@QByteArray@@QBE?AV1@D@Z
+  0x00A31F32: push     eax
+  0x00A31F33: mov      ecx, edi
+  0x00A31F35: mov      byte ptr [ebp - 4], 0x16
+  0x00A31F39: call     dword ptr [0xe9ae58]  ; ??6QDebug@@QAEAAV0@ABVQByteArray@@@Z
+  0x00A31F3F: push     0xcf595c  ; 'sectionData.size(): '
+  0x00A31F44: mov      ecx, eax
+  0x00A31F46: call     dword ptr [0xe9b408]  ; ??6QDebug@@QAEAAV0@PBD@Z
+  0x00A31F4C: mov      ecx, dword ptr [ebp - 0x48]
+  0x00A31F4F: push     dword ptr [ecx + 4]
+  0x00A31F52: mov      ecx, eax
+  0x00A31F54: call     dword ptr [0xe9b414]  ; ??6QDebug@@QAEAAV0@H@Z
+  0x00A31F5A: lea      ecx, [ebp - 0xd8]
+  0x00A31F60: call     dword ptr [0xe9b380]  ; ??1QByteArray@@QAE@XZ
+  0x00A31F66: lea      ecx, [ebp - 0x84]
+  0x00A31F6C: call     dword ptr [0xe9b420]  ; ??1QDebug@@QAE@XZ
+  0x00A31F72: mov      eax, dword ptr [ebp - 0x7c]
+  0x00A31F75: lea      ecx, [ebp - 0x1c]
+  0x00A31F78: mov      dword ptr [ebp - 0x28], eax
+  0x00A31F7B: mov      eax, dword ptr [ebp - 0x4c]
+  0x00A31F7E: mov      dword ptr [ebp - 0x24], eax
+  0x00A31F81: mov      eax, dword ptr [ebp - 0x40]
+  0x00A31F84: mov      dword ptr [ebp - 0x20], eax
+  0x00A31F87: lea      eax, [ebp - 0x44]
+  0x00A31F8A: push     eax
+  0x00A31F8B: call     dword ptr [0xe9b228]  ; ??0QByteArray@@QAE@ABV0@@Z
+  0x00A31F91: lea      eax, [ebp - 0x48]
+  0x00A31F94: mov      dword ptr [ebp - 0x18], 0
+  0x00A31F9B: push     eax
+  0x00A31F9C: lea      ecx, [ebp - 0x14]
+  0x00A31F9F: call     dword ptr [0xe9b228]  ; ??0QByteArray@@QAE@ABV0@@Z
+  0x00A31FA5: lea      eax, [ebp - 0x28]
+  0x00A31FA8: mov      byte ptr [ebp - 4], 0x17
+  0x00A31FAC: push     eax
+  0x00A31FAD: lea      ecx, [ebp - 0x38]
+  0x00A31FB0: call     0x44440e  ; internal @ 0x44440E
+  0x00A31FB5: lea      ecx, [ebp - 0x14]
+  0x00A31FB8: call     dword ptr [0xe9b380]  ; ??1QByteArray@@QAE@XZ
+  0x00A31FBE: lea      ecx, [ebp - 0x1c]
+  0x00A31FC1: call     dword ptr [0xe9b380]  ; ??1QByteArray@@QAE@XZ
+  0x00A31FC7: mov      edi, dword ptr [ebp - 0x4c]
+  0x00A31FCA: add      dword ptr [ebp - 0x3c], edi
+  0x00A31FCD: mov      eax, dword ptr [ebp - 0x5c]
+  0x00A31FD0: mov      eax, dword ptr [eax]
+  0x00A31FD2: cdq
+  0x00A31FD3: and      edx, 7
+  0x00A31FD6: mov      byte ptr [ebp - 4], 0xb
+  0x00A31FDA: lea      ecx, [edx + eax]
+  0x00A31FDD: mov      eax, edi
+  0x00A31FDF: sar      ecx, 3
+  0x00A31FE2: cdq
+  0x00A31FE3: idiv     ecx
+  0x00A31FE5: lea      ecx, [ebp - 0x44]
+  0x00A31FE8: add      dword ptr [ebp - 0x7c], eax
+  0x00A31FEB: call     dword ptr [0xe9b380]  ; ??1QByteArray@@QAE@XZ
+  0x00A31FF1: lea      ecx, [ebp - 0x48]
+  0x00A31FF4: call     dword ptr [0xe9b380]  ; ??1QByteArray@@QAE@XZ
+  0x00A31FFA: mov      eax, dword ptr [ebp - 0x58]
+  0x00A31FFD: sub      eax, dword ptr [ebp - 0x3c]
+  0x00A32000: mov      edx, dword ptr [ebp + 0xc]
+  0x00A32003: cmp      eax, edx
+  0x00A32005: mov      edi, dword ptr [ebp - 0x5c]
+  0x00A32008: cmovl    edx, eax
+  0x00A3200B: mov      ecx, edx
+  0x00A3200D: mov      dword ptr [ebp - 0x4c], edx
+  0x00A32010: mov      eax, ecx
+  0x00A32012: test     eax, eax
+  0x00A32014: jne      0xa31cb0
+  0x00A3201A: lea      ecx, [ebp - 0x60]
+  0x00A3201D: mov      byte ptr [ebp - 4], 9
+  0x00A32021: call     dword ptr [0xe9b380]  ; ??1QByteArray@@QAE@XZ
+  0x00A32027: mov      ecx, esi
+  0x00A32029: call     dword ptr [0xe9b1c0]  ; ?nextNode@QMapNodeBase@@QBEPBU1@XZ
+  0x00A3202F: lea      ecx, [ebp - 0x50]
+  0x00A32032: mov      esi, eax
+  0x00A32034: call     0x417990  ; internal @ 0x417990
+  0x00A32039: mov      eax, dword ptr [ebp - 0x50]
+  0x00A3203C: add      eax, 8
+  0x00A3203F: cmp      esi, eax
+  0x00A32041: je       0xa3216d
+  0x00A32047: mov      ecx, dword ptr [ebp - 0x34]
+  0x00A3204A: jmp      0xa31c43
+  0x00A3204F: mov      dword ptr [ebp - 0x30], 0xe63f68
+  0x00A32056: push     ecx
+  0x00A32057: mov      ecx, esp
+  0x00A32059: mov      byte ptr [ebp - 0x58], 0x20
+  0x00A3205D: push     dword ptr [ebp - 0x58]
+  0x00A32060: mov      byte ptr [ebp - 4], 0xf
+  0x00A32064: call     dword ptr [0xe9b144]  ; ??0QChar@@QAE@UQLatin1Char@@@Z
+  0x00A3206A: push     0xa
+  0x00A3206C: push     0
+  0x00A3206E: push     edi
+  0x00A3206F: lea      eax, [ebp - 0x84]
+  0x00A32075: push     eax
+  0x00A32076: lea      ecx, [ebp - 0x30]
+  0x00A32079: call     dword ptr [0xe9b304]  ; ?arg@QString@@QBE?AV1@HHHVQChar@@@Z
+  0x00A3207F: mov      esi, eax
+  0x00A32081: push     0
+  0x00A32083: push     0
+  0x00A32085: push     0
+  0x00A32087: lea      ecx, [ebp - 0x24]
+  0x00A3208A: mov      byte ptr [ebp - 4], 0x10
+  0x00A3208E: call     dword ptr [0xe9b12c]  ; ??0QMessageLogger@@QAE@PBDH0@Z
+  0x00A32094: lea      ecx, [ebp - 0x58]
+  0x00A32097: push     ecx
+  0x00A32098: mov      ecx, eax
+  0x00A3209A: call     dword ptr [0xe9b138]  ; ?warning@QMessageLogger@@QBE?AVQDebug@@XZ
+  0x00A320A0: mov      ecx, eax
+  0x00A320A2: mov      byte ptr [ebp - 4], 0x11
+  0x00A320A6: call     dword ptr [0xe9b41c]  ; ?noquote@QDebug@@QAEAAV1@XZ
+  0x00A320AC: push     esi
+  0x00A320AD: mov      ecx, eax
+  0x00A320AF: call     dword ptr [0xe9b404]  ; ??6QDebug@@QAEAAV0@ABVQString@@@Z
+  0x00A320B5: lea      ecx, [ebp - 0x58]
+  0x00A320B8: call     dword ptr [0xe9b420]  ; ??1QDebug@@QAE@XZ
+  0x00A320BE: lea      ecx, [ebp - 0x84]
+  0x00A320C4: call     dword ptr [0xe9b150]  ; ??1QString@@QAE@XZ
+  0x00A320CA: lea      ecx, [ebp - 0x30]
+  0x00A320CD: call     dword ptr [0xe9b150]  ; ??1QString@@QAE@XZ
+  0x00A320D3: mov      esi, 0xd
+  0x00A320D8: jmp      0xa32145
+  0x00A320DA: lea      ecx, [ebp - 0x54]
+  0x00A320DD: mov      byte ptr [ebp - 4], 0xe
+  0x00A320E1: mov      esi, eax
+  0x00A320E3: call     dword ptr [0xe9b380]  ; ??1QByteArray@@QAE@XZ
+  0x00A320E9: jmp      0xa320f5
+  0x00A320EB: mov      esi, 0xe
+  0x00A320F0: jmp      0xa320f5
+  0x00A320F2: mov      esi, dword ptr [ebp - 0x68]
+  0x00A320F5: mov      dword ptr [ebp - 0x30], 0xe63fac
+  0x00A320FC: push     0
+  0x00A320FE: push     0
+  0x00A32100: push     0
+  0x00A32102: lea      ecx, [ebp - 0x24]
+  0x00A32105: mov      byte ptr [ebp - 4], 0x13
+  0x00A32109: call     dword ptr [0xe9b12c]  ; ??0QMessageLogger@@QAE@PBDH0@Z
+  0x00A3210F: lea      ecx, [ebp - 0x68]
+  0x00A32112: push     ecx
+  0x00A32113: mov      ecx, eax
+  0x00A32115: call     dword ptr [0xe9b138]  ; ?warning@QMessageLogger@@QBE?AVQDebug@@XZ
+  0x00A3211B: mov      ecx, eax
+  0x00A3211D: mov      byte ptr [ebp - 4], 0x14
+  0x00A32121: call     dword ptr [0xe9b41c]  ; ?noquote@QDebug@@QAEAAV1@XZ
+  0x00A32127: lea      ecx, [ebp - 0x30]
+  0x00A3212A: push     ecx
+  0x00A3212B: mov      ecx, eax
+  0x00A3212D: call     dword ptr [0xe9b404]  ; ??6QDebug@@QAEAAV0@ABVQString@@@Z
+  0x00A32133: lea      ecx, [ebp - 0x68]
+  0x00A32136: call     dword ptr [0xe9b420]  ; ??1QDebug@@QAE@XZ
+  0x00A3213C: lea      ecx, [ebp - 0x30]
+  0x00A3213F: call     dword ptr [0xe9b150]  ; ??1QString@@QAE@XZ
+  0x00A32145: lea      ecx, [ebp - 0x44]
+  0x00A32148: call     dword ptr [0xe9b380]  ; ??1QByteArray@@QAE@XZ
+  0x00A3214E: lea      ecx, [ebp - 0x48]
+  0x00A32151: call     dword ptr [0xe9b380]  ; ??1QByteArray@@QAE@XZ
+  0x00A32157: lea      ecx, [ebp - 0x60]
+  0x00A3215A: call     dword ptr [0xe9b380]  ; ??1QByteArray@@QAE@XZ
+  0x00A32160: jmp      0xa32337
+  0x00A32165: mov      edi, dword ptr [ebp - 0x94]
+  0x00A3216B: jmp      0xa32170
+  0x00A3216D: mov      edi, dword ptr [ebp - 0x34]
+  0x00A32170: push     dword ptr [ebp - 0x38]
+  0x00A32173: call     0x434cd9  ; internal @ 0x434CD9
+  0x00A32178: add      esp, 4
+  0x00A3217B: mov      eax, dword ptr [eax]
+  0x00A3217D: cmp      eax, 1
+  0x00A32180: je       0xa32194
+  0x00A32182: test     eax, eax
+  0x00A32184: je       0xa32194
+  0x00A32186: mov      eax, dword ptr [ebp - 0x38]
+  0x00A32189: lea      ecx, [ebp - 0x38]
+  0x00A3218C: push     dword ptr [eax + 4]
+  0x00A3218F: call     0x405290  ; internal @ 0x405290
+  0x00A32194: lea      ecx, [ebp - 0x38]
+  0x00A32197: call     dword ptr [0xe9b444]  ; ?begin@QListData@@QBEPAPAXXZ
+  0x00A3219D: push     dword ptr [ebp - 0x38]
+  0x00A321A0: mov      esi, eax
+  0x00A321A2: call     0x434cd9  ; internal @ 0x434CD9
+  0x00A321A7: add      esp, 4
+  0x00A321AA: mov      eax, dword ptr [eax]
+  0x00A321AC: cmp      eax, 1
+  0x00A321AF: je       0xa321c3
+  0x00A321B1: test     eax, eax
+  0x00A321B3: je       0xa321c3
+  0x00A321B5: mov      eax, dword ptr [ebp - 0x38]
+  0x00A321B8: lea      ecx, [ebp - 0x38]
+  0x00A321BB: push     dword ptr [eax + 4]
+  0x00A321BE: call     0x405290  ; internal @ 0x405290
+  0x00A321C3: lea      ecx, [ebp - 0x38]
+  0x00A321C6: call     dword ptr [0xe9b440]  ; ?end@QListData@@QBEPAPAXXZ
+  0x00A321CC: cmp      esi, eax
+  0x00A321CE: je       0xa321f5
+  0x00A321D0: mov      edx, dword ptr [esi]
+  0x00A321D2: mov      ecx, dword ptr [edx]
+  0x00A321D4: cmp      ecx, 0xc0230000
+  0x00A321DA: jae      0xa321eb
+  0x00A321DC: cmp      byte ptr [ebp - 0x90], 0
+  0x00A321E3: je       0xa3236d
+  0x00A321E9: mov      ecx, edi
+  0x00A321EB: add      esi, 4
+  0x00A321EE: mov      dword ptr [edx + 0x10], ecx
+  0x00A321F1: cmp      esi, eax
+  0x00A321F3: jne      0xa321d0
+  0x00A321F5: lea      ecx, [ebp - 0x114]
+  0x00A321FB: call     dword ptr [0xe9b148]  ; ??0QString@@QAE@XZ
+  0x00A32201: mov      eax, dword ptr [0xe9b398]
+  0x00A32206: mov      byte ptr [ebp - 0xe4], 0
+  0x00A3220D: mov      dword ptr [ebp - 0xe0], 0
+  0x00A32217: mov      dword ptr [ebp - 0xdc], eax
+  0x00A3221D: push     dword ptr [ebp - 0x64]
+  0x00A32220: mov      esi, dword ptr [0xe9b220]
+  0x00A32226: lea      ecx, [ebp - 0x114]
+  0x00A3222C: mov      byte ptr [ebp - 4], 0x18
+  0x00A32230: call     esi
+  0x00A32232: movups   xmm0, xmmword ptr [ebp - 0xc4]
+  0x00A32239: mov      eax, dword ptr [ebp - 0x9c]
+  0x00A3223F: mov      dword ptr [ebp - 0xe8], eax
+  0x00A32245: mov      al, byte ptr [ebp - 0x29]
+  0x00A32248: movups   xmmword ptr [ebp - 0x110], xmm0
+  0x00A3224F: mov      byte ptr [ebp - 0xe4], al
+  0x00A32255: movups   xmm0, xmmword ptr [ebp - 0xb4]
+  0x00A3225C: mov      eax, dword ptr [ebp + 0xc]
+  0x00A3225F: mov      dword ptr [ebp - 0xe0], eax
+  0x00A32265: mov      eax, dword ptr [ebp - 0xdc]
+  0x00A3226B: movups   xmmword ptr [ebp - 0x100], xmm0
+  0x00A32272: movq     xmm0, qword ptr [ebp - 0xa4]
+  0x00A3227A: movq     qword ptr [ebp - 0xf0], xmm0
+  0x00A32282: cmp      eax, dword ptr [ebp - 0x38]
+  0x00A32285: je       0xa322ad
+  0x00A32287: lea      eax, [ebp - 0x38]
+  0x00A3228A: push     eax
+  0x00A3228B: lea      ecx, [ebp - 0x34]
+  0x00A3228E: call     0x414f01  ; internal @ 0x414F01
+  0x00A32293: mov      ecx, dword ptr [ebp - 0x34]
+  0x00A32296: mov      eax, dword ptr [ebp - 0xdc]
+  0x00A3229C: mov      dword ptr [ebp - 0xdc], ecx
+  0x00A322A2: lea      ecx, [ebp - 0x34]
+  0x00A322A5: mov      dword ptr [ebp - 0x34], eax
+  0x00A322A8: call     0x40ea98  ; internal @ 0x40EA98
+  0x00A322AD: mov      edi, dword ptr [ebp - 0x8c]
+  0x00A322B3: lea      eax, [ebp - 0x114]
+  0x00A322B9: push     eax
+  0x00A322BA: mov      ecx, edi
+  0x00A322BC: call     esi
+  0x00A322BE: movups   xmm0, xmmword ptr [ebp - 0x110]
+  0x00A322C5: mov      eax, dword ptr [ebp - 0xe8]
+  0x00A322CB: movups   xmmword ptr [edi + 4], xmm0
+  0x00A322CF: movups   xmm0, xmmword ptr [ebp - 0x100]
+  0x00A322D6: movups   xmmword ptr [edi + 0x14], xmm0
+  0x00A322DA: movq     xmm0, qword ptr [ebp - 0xf0]
+  0x00A322E2: movq     qword ptr [edi + 0x24], xmm0
+  0x00A322E7: mov      dword ptr [edi + 0x2c], eax
+  0x00A322EA: mov      al, byte ptr [ebp - 0xe4]
+  0x00A322F0: mov      byte ptr [edi + 0x30], al
+  0x00A322F3: mov      eax, dword ptr [ebp - 0xe0]
+  0x00A322F9: mov      dword ptr [edi + 0x34], eax
+  0x00A322FC: mov      eax, dword ptr [edi + 0x38]
+  0x00A322FF: cmp      eax, dword ptr [ebp - 0xdc]
+  0x00A32305: je       0xa3232a
+  0x00A32307: lea      eax, [ebp - 0xdc]
+  0x00A3230D: push     eax
+  0x00A3230E: lea      ecx, [ebp - 0x34]
+  0x00A32311: call     0x414f01  ; internal @ 0x414F01
+  0x00A32316: mov      ecx, dword ptr [ebp - 0x34]
+  0x00A32319: mov      eax, dword ptr [edi + 0x38]
+  0x00A3231C: mov      dword ptr [edi + 0x38], ecx
+  0x00A3231F: lea      ecx, [ebp - 0x34]
+  0x00A32322: mov      dword ptr [ebp - 0x34], eax
+  0x00A32325: call     0x40ea98  ; internal @ 0x40EA98
+  0x00A3232A: lea      ecx, [ebp - 0x114]
+  0x00A32330: xor      esi, esi
+  0x00A32332: call     0x438122  ; internal @ 0x438122
+  0x00A32337: lea      ecx, [ebp - 0x80]
+  0x00A3233A: call     dword ptr [0xe9b150]  ; ??1QString@@QAE@XZ
+  0x00A32340: lea      ecx, [ebp - 0x50]
+  0x00A32343: call     0x42702a  ; internal @ 0x42702A
+  0x00A32348: lea      ecx, [ebp - 0x38]
+  0x00A3234B: call     0x40ea98  ; internal @ 0x40EA98
+  0x00A32350: mov      eax, esi
+  0x00A32352: mov      ecx, dword ptr [ebp - 0xc]
+  0x00A32355: mov      dword ptr fs:[0], ecx
+  0x00A3235C: pop      ecx
+  0x00A3235D: pop      edi
+  0x00A3235E: pop      esi
+  0x00A3235F: mov      ecx, dword ptr [ebp - 0x10]
+  0x00A32362: xor      ecx, ebp
+  0x00A32364: call     0x419385  ; internal @ 0x419385
+  0x00A32369: mov      esp, ebp
+  0x00A3236B: pop      ebp
+  0x00A3236C: ret
+
+================================================================================
+D) CALLERS DA FUNCAO 0xA31750
+================================================================================
+
+Encontrados 0 callers:
+
+
+================================================================================
+E) STRINGS COM PADRAO DE CHAVE NO BINARIO
+================================================================================
+
+  hex_16 (2 matches unicos, mostrando ate 30):
+    b'0123456789ABCDEF'
+    b'9293949596979899'
+
+  hex_32 (1 matches unicos, mostrando ate 30):
+    b'84858687888990919293949596979899'
+
+  hex_64 (1 matches unicos, mostrando ate 30):
+    b'6869707172737475767778798081828384858687888990919293949596979899'
+
+  base64 (3778 matches unicos, mostrando ate 30):
+    b'/home/moza/firmwares'
+    b'0123456789ABCDEF'
+    b'0123456789abcdefghijklmnopqrstuvwxyz'
+    b'6869707172737475767778798081828384858687888990919293949596979899'
+    b'APMRESUMEAUTOMATIC'
+    b'AbstractDeviceItem'
+    b'AbstractParameter'
+    b'AcquireSRWLockExclusive'
+    b'AcquireSRWLockShared'
+    b'AngularVelocityX'
+    b'AngularVelocityY'
+    b'AngularVelocityZ'
+    b'App1UpgradeProcessor'
+    b'App1UpgradeProcessorWorker'
+    b'AuGetSafetyControlGet'
+    b'AuGetStateGetDeviceDataGet'
+    b'BCryptCloseAlgorithmProvider'
+    b'BCryptCreateHash'
+    b'BCryptDeriveKeyPBKDF2'
+    b'BCryptDestroyHash'
+    b'BCryptDestroyKey'
+    b'BCryptFinishHash'
+    b'BCryptGenerateSymmetricKey'
+    b'BCryptGetProperty'
+    b'BCryptOpenAlgorithmProvider'
+    b'BCryptSetProperty'
+    b'BatteryStatusGet'
+    b'CdCodeScreen1Set'
+    b'CdCodeScreen2Set'
+    b'CdCtrlCodeScreen4Request'
+
+  printable_16 (6778 matches unicos, mostrando ate 30):
+    b'          </FONT>'
+    b' %2, dataSize: %3'
+    b' &,void *,bool *)'
+    b' - dashboard log '
+    b' - update client '
+    b' Firmware Manager'
+    b' QString &) const'
+    b' Receiver is null'
+    b' UTF-8 in comment'
+    b' add file error: '
+    b' array new length'
+    b' at[%1:%2:%3]: %4'
+    b' be negative, is '
+    b' boolean, but is '
+    b' char> >,void> &)'
+    b' class QString &)'
+    b' command failed: '
+    b' command is valid'
+    b' connection error'
+    b' constructed task'
+    b' create directory'
+    b' db file success:'
+    b' default one used'
+    b' error enum value'
+    b' event loop state'
+    b' expired at state'
+    b' files to remove:'
+    b' for compression:'
+    b' for file request'
+    b' for this device['
+
+================================================================================
+FIM V5
+================================================================================
+**********************
+Windows PowerShell transcript end
+End time: 20260723112449
+**********************
